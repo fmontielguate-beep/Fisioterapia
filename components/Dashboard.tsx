@@ -110,16 +110,16 @@ const Dashboard: React.FC<DashboardProps> = ({ setView, patient }) => {
         
         {/* Anillo de progreso con viewBox para evitar clipping */}
         <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-100 flex items-center gap-8 min-w-[340px]">
-          <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
-             <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
-               <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100" />
+          <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
+             <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+               <circle cx="60" cy="60" r="50" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-100" />
                <circle 
-                cx="48" cy="48" r="40" 
+                cx="60" cy="60" r="50" 
                 stroke="currentColor" 
-                strokeWidth="10" 
+                strokeWidth="12" 
                 fill="transparent" 
-                strokeDasharray={251.2} 
-                strokeDashoffset={251.2 * (1 - patient.progress / 100)} 
+                strokeDasharray={314} 
+                strokeDashoffset={314 * (1 - patient.progress / 100)} 
                 strokeLinecap="round"
                 className="text-emerald-500 transition-all duration-1000 ease-in-out" 
                />

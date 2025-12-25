@@ -35,7 +35,7 @@ import {
   CalendarDays,
   Dumbbell,
   StretchHorizontal,
-  InfoIcon
+  Move
 } from 'lucide-react';
 import { PatientInfo, DiagnosticType, ClinicalNote, VitalSigns, Exercise } from '../types';
 
@@ -49,9 +49,13 @@ interface ClinicalRecordProps {
 const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onManagePlan, onUpdatePatient }) => {
   const [activeTab, setActiveTab] = useState<'summary' | 'notes' | 'exercises' | 'diagnostics'>('summary');
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [isEditingData, setIsEditingData] = useState(false);
   const [noteType, setNoteType] = useState<'Evolución' | 'Plan de Trabajo'>('Evolución');
   const [selectedExerciseDetail, setSelectedExerciseDetail] = useState<Exercise | null>(null);
   
+  // Estado para la edición de datos
+  const [editFormData, setEditFormData] = useState<PatientInfo>({ ...patient });
+
   const getCurrentDateTimeLocal = () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -74,6 +78,11 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
     { id: 'notes', label: 'Evolución', icon: Clipboard },
     { id: 'exercises', label: 'Plan de Trabajo', icon: Activity },
   ];
+
+  const handleSaveEdit = () => {
+    onUpdatePatient(editFormData);
+    setIsEditingData(false);
+  };
 
   const handleAddNoteClick = (type: 'Evolución' | 'Plan de Trabajo') => {
     setNoteType(type);
@@ -147,6 +156,40 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-20 relative">
       
+      {/* Modal Edición Integral de Datos */}
+      {isEditingData && (
+        <div className="fixed inset-0 z-[120] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] flex flex-col">
+             <header className="p-6 bg-slate-900 text-white flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Edit2 size={24} className="text-emerald-400" />
+                  <h3 className="font-bold text-lg">Editar Historia Clínica</h3>
+                </div>
+                <button onClick={() => setIsEditingData(false)} className="p-2 hover:bg-white/10 rounded-xl"><X size={24} /></button>
+             </header>
+             <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <EditField label="Nombre" value={editFormData.name} onChange={v => setEditFormData({...editFormData, name: v})} />
+                  <EditField label="DNI" value={editFormData.idNumber} onChange={v => setEditFormData({...editFormData, idNumber: v})} />
+                  <EditField label="Edad" value={editFormData.age.toString()} type="number" onChange={v => setEditFormData({...editFormData, age: parseInt(v) || 0})} />
+                  <EditField label="Condición / Patología" value={editFormData.condition} onChange={v => setEditFormData({...editFormData, condition: v})} />
+                </div>
+                <EditArea label="Diagnóstico Médico" value={editFormData.diagnosis} onChange={v => setEditFormData({...editFormData, diagnosis: v})} />
+                <EditArea label="Historia del Padecimiento Actual" value={editFormData.illnessHistory} onChange={v => setEditFormData({...editFormData, illnessHistory: v})} rows={5} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <EditArea label="Antecedentes / Comorbilidades" value={editFormData.medicalHistory} onChange={v => setEditFormData({...editFormData, medicalHistory: v})} />
+                  <EditArea label="Medicación / Tratamientos Otros" value={editFormData.otherTreatments} onChange={v => setEditFormData({...editFormData, otherTreatments: v})} />
+                </div>
+                <EditArea label="Señales de Alarma" value={editFormData.warningSigns} onChange={v => setEditFormData({...editFormData, warningSigns: v})} />
+             </div>
+             <footer className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
+                <button onClick={() => setIsEditingData(false)} className="flex-1 py-4 font-bold text-slate-500 hover:bg-slate-100 rounded-2xl">Cancelar</button>
+                <button onClick={handleSaveEdit} className="flex-[2] bg-emerald-600 text-white py-4 font-bold rounded-2xl shadow-xl shadow-emerald-100 flex items-center justify-center gap-2"><Save size={18} /> Guardar Cambios</button>
+             </footer>
+          </div>
+        </div>
+      )}
+
       {/* Modal Detalle Ejercicio */}
       {selectedExerciseDetail && (
         <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
@@ -261,6 +304,9 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
           </button>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setIsEditingData(true)} className="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+            <Edit2 size={14} /> Editar Historia
+          </button>
           <button onClick={() => handleAddNoteClick('Plan de Trabajo')} className="bg-green-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition-all flex items-center gap-2 shadow-xl shadow-green-100">
             <Activity size={14} /> Nota Plan
           </button>
@@ -290,20 +336,20 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
           </div>
         </div>
 
-        {/* Círculo de progreso mejorado: viewBox añadido para evitar clipping */}
+        {/* Círculo de progreso - Corregido viewBox para evitar cortes */}
         <div className="bg-slate-50 p-8 rounded-[3rem] border border-slate-100 flex items-center gap-8 min-w-[380px] z-10 shadow-inner">
-          <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
-             <svg className="w-full h-full -rotate-90 drop-shadow-md" viewBox="0 0 112 112">
-               <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-200" />
+          <div className="relative w-32 h-32 flex items-center justify-center shrink-0">
+             <svg className="w-full h-full -rotate-90 drop-shadow-md" viewBox="0 0 120 120">
+               <circle cx="60" cy="60" r="50" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-200" />
                <circle 
-                cx="56" cy="56" r="48" 
+                cx="60" cy="60" r="50" 
                 stroke="currentColor" 
-                strokeWidth="10" 
+                strokeWidth="12" 
                 fill="transparent" 
-                strokeDasharray={301.6} 
-                strokeDashoffset={301.6 * (1 - patient.progress / 100)} 
+                strokeDasharray={314} 
+                strokeDashoffset={314 * (1 - patient.progress / 100)} 
                 strokeLinecap="round"
-                className="text-blue-600 transition-all duration-700 ease-out" 
+                className="text-blue-600 transition-all duration-1000 ease-out" 
                />
              </svg>
              <span className="absolute text-2xl font-black text-slate-800 tracking-tighter">{patient.progress}%</span>
@@ -334,7 +380,8 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
             <div className="lg:col-span-2 space-y-6">
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 border-l-8 border-l-emerald-500">
+                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 border-l-8 border-l-emerald-500 relative group">
+                  <button onClick={() => setIsEditingData(true)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-400 hover:text-emerald-600"><Edit2 size={14}/></button>
                   <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
                     <CalendarDays size={28} />
                   </div>
@@ -345,7 +392,8 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
                     </p>
                   </div>
                 </div>
-                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 border-l-8 border-l-indigo-500">
+                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 border-l-8 border-l-indigo-500 relative group">
+                  <button onClick={() => setIsEditingData(true)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-400 hover:text-indigo-600"><Edit2 size={14}/></button>
                   <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
                     <TrendingUp size={28} />
                   </div>
@@ -358,13 +406,14 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
                 </div>
               </div>
 
-              <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col border-l-8 border-l-blue-600">
+              <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col border-l-8 border-l-blue-600 relative group">
+                <button onClick={() => setIsEditingData(true)} className="absolute top-4 right-20 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-400 hover:text-blue-600 z-20"><Edit2 size={16}/></button>
                 <div className="bg-blue-50/50 p-4 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-600 text-white rounded-lg"><BookOpen size={16} /></div>
                     <h4 className="font-bold text-slate-800 text-sm">Historia del Padecimiento Actual</h4>
                   </div>
-                  <button onClick={openScholarSearch} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm">
+                  <button onClick={openScholarSearch} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm relative z-10">
                     <GraduationCap size={14} /> Evidencia Scholar
                   </button>
                 </div>
@@ -373,7 +422,8 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
                 </div>
               </div>
 
-              <div className="bg-amber-50/30 rounded-[2.5rem] border border-amber-100 shadow-sm overflow-hidden flex flex-col border-l-8 border-l-amber-500">
+              <div className="bg-amber-50/30 rounded-[2.5rem] border border-amber-100 shadow-sm overflow-hidden flex flex-col border-l-8 border-l-amber-500 relative group">
+                <button onClick={() => setIsEditingData(true)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-400 hover:text-amber-600"><Edit2 size={16}/></button>
                 <div className="bg-amber-50 p-4 border-b border-amber-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-amber-600 text-white rounded-lg"><ClipboardList size={16} /></div>
@@ -404,7 +454,8 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
                 </div>
               </div>
 
-              <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[2.5rem] flex items-start gap-4 shadow-sm group">
+              <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[2.5rem] flex items-start gap-4 shadow-sm group relative">
+                <button onClick={() => setIsEditingData(true)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-red-400 hover:text-red-600"><Edit2 size={14}/></button>
                 <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 shrink-0"><ShieldAlert size={24} /></div>
                 <div className="flex-1 space-y-1">
                   <h4 className="text-[10px] font-black text-red-600 uppercase tracking-widest">Alertas de Seguridad</h4>
@@ -556,6 +607,31 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   );
 };
 
+// Componentes internos para edición
+const EditField = ({ label, value, onChange, type = "text" }: { label: string, value: string, onChange: (v: string) => void, type?: string }) => (
+  <div className="space-y-2">
+    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
+    <input 
+      type={type} 
+      value={value} 
+      onChange={e => onChange(e.target.value)} 
+      className="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none font-bold text-slate-700"
+    />
+  </div>
+);
+
+const EditArea = ({ label, value, onChange, rows = 3 }: { label: string, value: string, onChange: (v: string) => void, rows?: number }) => (
+  <div className="space-y-2">
+    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
+    <textarea 
+      rows={rows}
+      value={value} 
+      onChange={e => onChange(e.target.value)} 
+      className="w-full p-5 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none font-medium text-slate-700"
+    />
+  </div>
+);
+
 const VitalCard = ({ icon, label, value }: any) => (
   <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
     <div className="flex justify-center mb-1">{icon}</div>
@@ -574,11 +650,6 @@ const VitalInput = ({ label, value, onChange }: { label: string, value: string, 
       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 focus:ring-1 focus:ring-blue-500 outline-none text-xs font-bold text-slate-700"
     />
   </div>
-);
-
-// Move redefinition (Internal proxy for Move icon)
-const Move: React.FC<any> = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
 );
 
 export default ClinicalRecord;
