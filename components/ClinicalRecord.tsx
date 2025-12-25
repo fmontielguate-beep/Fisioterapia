@@ -1,13 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Plus, Calendar, Clipboard, Stethoscope, Activity, Sparkles, ChevronRight, TrendingUp,
   FileText, Heart, Wind, Thermometer, AlertTriangle, Beaker, Zap, Layers, Search, Check, Edit2,
   Home, ShieldAlert, Info, Save, BookOpen, ClipboardList, Pill, GraduationCap, X, Clock,
   User, CalendarDays, Dumbbell, StretchHorizontal, Move, Trash2, Brain, Loader2, CalendarPlus,
-  Eye, Fingerprint, Compass, FlaskConical, ChevronDown, Scale, Ruler, Zap as BMI
+  Eye, Fingerprint, Compass, FlaskConical, ChevronDown, Scale, Ruler, Zap as BMI, ClipboardEdit,
+  CheckCircle2, PlusCircle
 } from 'lucide-react';
-import { PatientInfo, DiagnosticType, ClinicalNote, VitalSigns, Exercise, GoniometryRecord, OrthopedicTestResult, ActivityLevel } from '../types';
+import { PatientInfo, ClinicalNote, VitalSigns, Exercise, GoniometryRecord, OrthopedicTestResult, ActivityLevel, PhysicalExamination } from '../types';
 import { getClinicalAnalysis } from '../services/geminiService';
 
 interface ClinicalRecordProps {
@@ -23,14 +24,22 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   const [activeTab, setActiveTab] = useState<'summary' | 'exam' | 'diagnostics' | 'notes' | 'exercises'>('summary');
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isEditingData, setIsEditingData] = useState(false);
+  const [isDeletingPatient, setIsDeletingPatient] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [clinicalFindings, setClinicalFindings] = useState('');
   const [aiAnalysisResult, setAiAnalysisResult] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [noteType, setNoteType] = useState<'Evolución' | 'Plan de Trabajo'>('Evolución');
   
   const [editFormData, setEditFormData] = useState<PatientInfo>({ ...patient });
+
+  // Estado para la nueva nota completa
+  const [noteForm, setNoteForm] = useState({
+    content: '',
+    painLevel: 5,
+    type: 'Evolución' as 'Evolución' | 'Plan de Trabajo',
+    vitalSigns: { ...patient.vitalSigns },
+    physicalExam: { ...patient.physicalExam }
+  });
 
   const tabs = [
     { id: 'summary', label: 'Resumen', icon: Stethoscope },
@@ -40,8 +49,22 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
     { id: 'exercises', label: 'Plan', icon: Activity },
   ];
 
+  // Cálculo de IMC automático en el modal de nota
+  useEffect(() => {
+    const w = noteForm.vitalSigns.weight;
+    const h = noteForm.vitalSigns.height / 100;
+    if (w > 0 && h > 0) {
+      const calculatedBmi = parseFloat((w / (h * h)).toFixed(2));
+      if (calculatedBmi !== noteForm.vitalSigns.bmi) {
+        setNoteForm(prev => ({
+          ...prev,
+          vitalSigns: { ...prev.vitalSigns, bmi: calculatedBmi }
+        }));
+      }
+    }
+  }, [noteForm.vitalSigns.weight, noteForm.vitalSigns.height]);
+
   const handleSaveEdit = () => {
-    // Recalcular IMC antes de guardar por si acaso
     const weight = editFormData.vitalSigns.weight;
     const heightM = editFormData.vitalSigns.height / 100;
     const bmi = weight / (heightM * heightM);
@@ -56,6 +79,40 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
 
     onUpdatePatient(finalData);
     setIsEditingData(false);
+  };
+
+  const handleSaveEvolution = () => {
+    if (!noteForm.content.trim()) return;
+
+    const newNote: ClinicalNote = {
+      id: Date.now().toString(),
+      date: new Date().toISOString().split('T')[0],
+      content: noteForm.content,
+      painLevel: noteForm.painLevel,
+      author: 'Fisioterapeuta Colegiado',
+      type: noteForm.type,
+      vitalSigns: { ...noteForm.vitalSigns },
+      physicalExam: { ...noteForm.physicalExam }
+    };
+
+    // Actualizamos el paciente con los nuevos datos de la evolución y añadimos la nota
+    const updatedPatient: PatientInfo = {
+      ...patient,
+      vitalSigns: { ...noteForm.vitalSigns },
+      physicalExam: { ...noteForm.physicalExam },
+      notes: [newNote, ...patient.notes],
+      lastSession: 'Hoy'
+    };
+
+    onUpdatePatient(updatedPatient);
+    setIsAddingNote(false);
+    setNoteForm({
+      content: '',
+      painLevel: 5,
+      type: 'Evolución',
+      vitalSigns: { ...updatedPatient.vitalSigns },
+      physicalExam: { ...updatedPatient.physicalExam }
+    });
   };
 
   const handleAiAnalysis = async () => {
@@ -76,7 +133,211 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-20 relative">
       
-      {/* Modal de Edición de Datos */}
+      {/* Modal de Nueva Evolución / Nota Completa */}
+      {isAddingNote && (
+        <div className="fixed inset-0 z-[180] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-5xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 max-h-[95vh] flex flex-col">
+            <header className="p-8 bg-emerald-700 text-white flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/10 rounded-2xl"><ClipboardEdit size={24} /></div>
+                <div>
+                  <h3 className="text-2xl font-black tracking-tight">Nueva Nota de Evolución Clínica</h3>
+                  <p className="text-emerald-100 text-xs font-bold uppercase tracking-widest">Registrando sesión completa para {patient.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsAddingNote(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-colors"><X size={28} /></button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto p-10 space-y-12 custom-scrollbar">
+              {/* Tipo y Contenido Principal */}
+              <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="md:col-span-2 space-y-4">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Notas de la Sesión</h4>
+                  <textarea 
+                    value={noteForm.content} 
+                    onChange={e => setNoteForm({...noteForm, content: e.target.value})}
+                    placeholder="Escribe el desarrollo de la sesión, respuesta al tratamiento, cambios en síntomas..."
+                    rows={6}
+                    className="w-full p-6 rounded-3xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-sm leading-relaxed"
+                  />
+                </div>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo de Nota</label>
+                    <div className="flex gap-2">
+                      {['Evolución', 'Plan de Trabajo'].map((t: any) => (
+                        <button 
+                          key={t} onClick={() => setNoteForm({...noteForm, type: t})}
+                          className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase transition-all ${noteForm.type === t ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white text-slate-400 border-slate-100'}`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nivel de Dolor (EVA)</label>
+                      <span className="text-xl font-black text-emerald-600">{noteForm.painLevel}/10</span>
+                    </div>
+                    <input 
+                      type="range" min="0" max="10" 
+                      value={noteForm.painLevel} 
+                      onChange={e => setNoteForm({...noteForm, painLevel: parseInt(e.target.value)})}
+                      className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              {/* Signos Vitales y Biometría */}
+              <section className="space-y-6">
+                <h4 className="text-xs font-black text-red-600 uppercase tracking-widest border-b border-red-50 pb-2 flex items-center gap-2"><Heart size={14}/> Signos Vitales y Biometría Hoy</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">FC (lpm)</label>
+                    <input type="number" value={noteForm.vitalSigns.heartRate} onChange={e => setNoteForm({...noteForm, vitalSigns: {...noteForm.vitalSigns, heartRate: parseInt(e.target.value)}})} className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 font-bold outline-none focus:ring-1 focus:ring-emerald-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">FR (rpm)</label>
+                    <input type="number" value={noteForm.vitalSigns.respiratoryRate} onChange={e => setNoteForm({...noteForm, vitalSigns: {...noteForm.vitalSigns, respiratoryRate: parseInt(e.target.value)}})} className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 font-bold outline-none focus:ring-1 focus:ring-emerald-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Tensión (TA)</label>
+                    <input type="text" value={noteForm.vitalSigns.bloodPressure} onChange={e => setNoteForm({...noteForm, vitalSigns: {...noteForm.vitalSigns, bloodPressure: e.target.value}})} className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 font-bold outline-none focus:ring-1 focus:ring-emerald-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">SatO2 (%)</label>
+                    <input type="number" value={noteForm.vitalSigns.oxygenSaturation} onChange={e => setNoteForm({...noteForm, vitalSigns: {...noteForm.vitalSigns, oxygenSaturation: parseInt(e.target.value)}})} className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 font-bold outline-none focus:ring-1 focus:ring-emerald-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Peso (kg)</label>
+                    <input type="number" step="0.1" value={noteForm.vitalSigns.weight} onChange={e => setNoteForm({...noteForm, vitalSigns: {...noteForm.vitalSigns, weight: parseFloat(e.target.value)}})} className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 font-bold outline-none focus:ring-1 focus:ring-emerald-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">IMC (Auto)</label>
+                    <div className="w-full px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-100 font-black text-emerald-700 text-center">{noteForm.vitalSigns.bmi}</div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Exploración Física */}
+              <section className="space-y-6">
+                <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest border-b border-blue-50 pb-2 flex items-center gap-2"><Eye size={14}/> Exploración Física Hoy</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Inspección Visual Actualizada</label>
+                    <textarea 
+                      rows={3} value={noteForm.physicalExam.visualInspection} 
+                      onChange={e => setNoteForm({...noteForm, physicalExam: {...noteForm.physicalExam, visualInspection: e.target.value}})} 
+                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 font-medium text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Palpación Actualizada</label>
+                    <textarea 
+                      rows={3} value={noteForm.physicalExam.palpation} 
+                      onChange={e => setNoteForm({...noteForm, physicalExam: {...noteForm.physicalExam, palpation: e.target.value}})} 
+                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 font-medium text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              {/* Goniometría */}
+              <section className="space-y-6">
+                <div className="flex justify-between items-center border-b border-indigo-50 pb-2">
+                  <h4 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2"><Compass size={14}/> Goniometría Actualizada</h4>
+                  <button 
+                    onClick={() => {
+                      const newGonio: GoniometryRecord = { joint: 'Nueva Artic.', movement: 'Flexión', activeRange: '0', passiveRange: '0' };
+                      setNoteForm({
+                        ...noteForm,
+                        physicalExam: { ...noteForm.physicalExam, goniometry: [...noteForm.physicalExam.goniometry, newGonio] }
+                      });
+                    }}
+                    className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {noteForm.physicalExam.goniometry.map((g, i) => (
+                    <div key={i} className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 grid grid-cols-2 gap-4 relative">
+                       <button 
+                        onClick={() => {
+                          const updatedGonio = noteForm.physicalExam.goniometry.filter((_, idx) => idx !== i);
+                          setNoteForm({...noteForm, physicalExam: {...noteForm.physicalExam, goniometry: updatedGonio}});
+                        }}
+                        className="absolute -top-2 -right-2 w-7 h-7 bg-white border border-slate-100 text-red-400 rounded-full flex items-center justify-center hover:bg-red-50"
+                       >
+                         <Trash2 size={12} />
+                       </button>
+                       <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-400 uppercase">Articulación</label>
+                          <input 
+                            type="text" value={g.joint} 
+                            onChange={e => {
+                              const newList = [...noteForm.physicalExam.goniometry];
+                              newList[i].joint = e.target.value;
+                              setNoteForm({...noteForm, physicalExam: {...noteForm.physicalExam, goniometry: newList}});
+                            }}
+                            className="w-full bg-white px-3 py-2 rounded-lg text-xs font-bold outline-none"
+                          />
+                       </div>
+                       <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-400 uppercase">Movimiento</label>
+                          <input 
+                            type="text" value={g.movement} 
+                            onChange={e => {
+                              const newList = [...noteForm.physicalExam.goniometry];
+                              newList[i].movement = e.target.value;
+                              setNoteForm({...noteForm, physicalExam: {...noteForm.physicalExam, goniometry: newList}});
+                            }}
+                            className="w-full bg-white px-3 py-2 rounded-lg text-xs font-bold outline-none"
+                          />
+                       </div>
+                       <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-400 uppercase">Activo (º)</label>
+                          <input 
+                            type="text" value={g.activeRange} 
+                            onChange={e => {
+                              const newList = [...noteForm.physicalExam.goniometry];
+                              newList[i].activeRange = e.target.value;
+                              setNoteForm({...noteForm, physicalExam: {...noteForm.physicalExam, goniometry: newList}});
+                            }}
+                            className="w-full bg-white px-3 py-2 rounded-lg text-xs font-bold outline-none"
+                          />
+                       </div>
+                       <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-400 uppercase">Pasivo (º)</label>
+                          <input 
+                            type="text" value={g.passiveRange} 
+                            onChange={e => {
+                              const newList = [...noteForm.physicalExam.goniometry];
+                              newList[i].passiveRange = e.target.value;
+                              setNoteForm({...noteForm, physicalExam: {...noteForm.physicalExam, goniometry: newList}});
+                            }}
+                            className="w-full bg-white px-3 py-2 rounded-lg text-xs font-bold outline-none"
+                          />
+                       </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <footer className="p-8 bg-slate-50 border-t border-slate-200 flex gap-4">
+              <button onClick={() => setIsAddingNote(false)} className="flex-1 py-4 bg-white border border-slate-200 text-slate-400 rounded-2xl font-bold uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all">Descartar</button>
+              <button onClick={handleSaveEvolution} className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
+                <CheckCircle2 size={18} /> Guardar Evolución Completa
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de Edición de Datos Básicos */}
       {isEditingData && (
         <div className="fixed inset-0 z-[170] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] flex flex-col">
@@ -84,8 +345,8 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-white/10 rounded-2xl"><Edit2 size={24} /></div>
                 <div>
-                  <h3 className="text-2xl font-black tracking-tight">Editar Historia Clínica</h3>
-                  <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Modificando ficha de {patient.name}</p>
+                  <h3 className="text-2xl font-black tracking-tight">Editar Ficha Base</h3>
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Modificando perfil de {patient.name}</p>
                 </div>
               </div>
               <button onClick={() => setIsEditingData(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-colors"><X size={28} /></button>
@@ -121,7 +382,7 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
               </section>
 
               <section className="space-y-6">
-                <h4 className="text-xs font-black text-red-600 uppercase tracking-[0.2em] border-b pb-2">Constantes Vitales</h4>
+                <h4 className="text-xs font-black text-red-600 uppercase tracking-[0.2em] border-b pb-2">Constantes de Referencia</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <label className="text-[9px] font-bold text-slate-400 uppercase">FC (lpm)</label>
@@ -139,28 +400,6 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
                     <label className="text-[9px] font-bold text-slate-400 uppercase">Tensión</label>
                     <input type="text" value={editFormData.vitalSigns.bloodPressure} onChange={e => setEditFormData({...editFormData, vitalSigns: {...editFormData.vitalSigns, bloodPressure: e.target.value}})} className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 font-bold" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase">Peso (kg)</label>
-                    <input type="number" value={editFormData.vitalSigns.weight} onChange={e => setEditFormData({...editFormData, vitalSigns: {...editFormData.vitalSigns, weight: parseFloat(e.target.value)}})} className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 font-bold" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase">Talla (cm)</label>
-                    <input type="number" value={editFormData.vitalSigns.height} onChange={e => setEditFormData({...editFormData, vitalSigns: {...editFormData.vitalSigns, height: parseFloat(e.target.value)}})} className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 font-bold" />
-                  </div>
-                </div>
-              </section>
-
-              <section className="space-y-6">
-                <h4 className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] border-b pb-2">Exploración Clínica</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Inspección Visual</label>
-                    <textarea rows={3} value={editFormData.physicalExam.visualInspection} onChange={e => setEditFormData({...editFormData, physicalExam: {...editFormData.physicalExam, visualInspection: e.target.value}})} className="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 font-medium text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Palpación</label>
-                    <textarea rows={3} value={editFormData.physicalExam.palpation} onChange={e => setEditFormData({...editFormData, physicalExam: {...editFormData.physicalExam, palpation: e.target.value}})} className="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 font-medium text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
                 </div>
               </section>
             </div>
@@ -171,6 +410,21 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
                 <Save size={18} /> Guardar Cambios
               </button>
             </footer>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmación Eliminación Paciente */}
+      {isDeletingPatient && (
+        <div className="fixed inset-0 z-[190] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 p-10 text-center">
+             <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner"><AlertTriangle size={40} /></div>
+             <h3 className="text-2xl font-black text-slate-800 tracking-tight">¿Eliminar Paciente?</h3>
+             <p className="text-slate-500 mt-3 mb-10 text-sm leading-relaxed">Se borrará toda la historia clínica de <span className="font-bold text-slate-800">{patient.name}</span>. Esta acción es definitiva.</p>
+             <div className="flex flex-col gap-4">
+               <button onClick={() => onDeletePatient(patient.id)} className="w-full bg-red-600 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-red-100 hover:bg-red-700 transition-all">Eliminar Permanente</button>
+               <button onClick={() => setIsDeletingPatient(false)} className="w-full bg-slate-50 text-slate-600 py-5 rounded-[2rem] font-bold text-xs uppercase tracking-widest">Cancelar</button>
+             </div>
           </div>
         </div>
       )}
@@ -231,6 +485,9 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
           </button>
           <button onClick={() => setIsEditingData(true)} className="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
             <Edit2 size={14} /> Editar
+          </button>
+          <button onClick={() => setIsDeletingPatient(true)} className="bg-red-50 text-red-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all flex items-center gap-2 shadow-sm">
+            <Trash2 size={14} /> Eliminar
           </button>
         </div>
       </div>
@@ -371,6 +628,91 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
                    ))}
                 </div>
              </section>
+          </div>
+        )}
+
+        {activeTab === 'notes' && (
+          <div className="space-y-6 animate-in fade-in">
+             <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-slate-800">Histórico de Evolución</h3>
+                <button 
+                  onClick={() => setIsAddingNote(true)} 
+                  className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-emerald-100 flex items-center gap-2 hover:bg-emerald-700"
+                >
+                  <Plus size={16} /> Nueva Evolución / Plan
+                </button>
+             </div>
+
+             <div className="space-y-4">
+                {patient.notes.length > 0 ? (
+                  patient.notes.map((note) => (
+                    <div key={note.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4 relative overflow-hidden border-l-4 border-l-emerald-500">
+                       <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-3">
+                             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><Clipboard size={16}/></div>
+                             <div>
+                                <h4 className="font-bold text-slate-800 text-sm">{note.type}</h4>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{note.date}</p>
+                             </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <span className="text-[10px] font-bold text-slate-400 uppercase">Dolor:</span>
+                             <span className="px-2 py-0.5 bg-red-50 text-red-600 rounded-lg text-[10px] font-black">{note.painLevel}/10</span>
+                          </div>
+                       </div>
+                       <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{note.content}</p>
+                       
+                       {/* Mini resumen de vitales en la nota */}
+                       {note.vitalSigns && (
+                         <div className="pt-4 mt-4 border-t border-slate-50 grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] text-slate-400 font-bold">
+                            <span className="flex items-center gap-1"><Heart size={10} className="text-red-400"/> {note.vitalSigns.heartRate} lpm</span>
+                            <span className="flex items-center gap-1"><Activity size={10} className="text-blue-400"/> {note.vitalSigns.bloodPressure}</span>
+                            <span className="flex items-center gap-1"><Wind size={10} className="text-cyan-400"/> {note.vitalSigns.oxygenSaturation}%</span>
+                            <span className="flex items-center gap-1"><BMI size={10} className="text-emerald-400"/> IMC: {note.vitalSigns.bmi}</span>
+                         </div>
+                       )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2.5rem] py-20 text-center space-y-4">
+                    <Clipboard className="mx-auto text-slate-300 w-12 h-12" />
+                    <p className="text-slate-400 font-bold text-sm">No hay registros de evolución aún.</p>
+                  </div>
+                )}
+             </div>
+          </div>
+        )}
+
+        {activeTab === 'exercises' && (
+          <div className="space-y-6 animate-in fade-in">
+             <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-slate-800">Plan de Trabajo Actual</h3>
+                <button 
+                  onClick={onManagePlan} 
+                  className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-100 flex items-center gap-2 hover:bg-blue-700"
+                >
+                  <PlusCircle size={16} /> Modificar Plan
+                </button>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {patient.assignedExercises.map((ex) => (
+                  <div key={ex.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 flex items-center justify-between border-l-4 border-l-blue-500">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center"><Dumbbell size={24}/></div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-sm">{ex.title}</h4>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">{ex.category} • {ex.reps}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {patient.assignedExercises.length === 0 && (
+                   <div className="col-span-full py-12 text-center text-slate-400 font-medium bg-slate-50 rounded-[2.5rem]">
+                      No hay ejercicios asignados.
+                   </div>
+                )}
+             </div>
           </div>
         )}
       </div>

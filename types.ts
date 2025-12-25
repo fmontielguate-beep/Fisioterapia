@@ -79,6 +79,7 @@ export interface ClinicalNote {
   painLevel: number; // 1-10
   author: string;
   vitalSigns?: VitalSigns; 
+  physicalExam?: PhysicalExamination;
   type: 'Evolución' | 'Plan de Trabajo' | 'General';
 }
 
