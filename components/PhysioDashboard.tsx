@@ -14,7 +14,10 @@ import {
   Save, 
   RefreshCw,
   TrendingUp,
-  CalendarDays
+  CalendarDays,
+  Trash2,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { PatientInfo } from '../types';
 import DosageCalculator from './DosageCalculator';
@@ -23,21 +26,30 @@ import ClinicalCalendar from './ClinicalCalendar';
 interface PhysioDashboardProps {
   patients: PatientInfo[];
   onSelectPatient: (patient: PatientInfo) => void;
+  onDeletePatient: (id: string) => void;
   onAddNew: () => void;
   onManualSave: () => void;
   lastSaved: string | null;
 }
 
-const PhysioDashboard: React.FC<PhysioDashboardProps> = ({ patients, onSelectPatient, onAddNew, onManualSave, lastSaved }) => {
+const PhysioDashboard: React.FC<PhysioDashboardProps> = ({ patients, onSelectPatient, onDeletePatient, onAddNew, onManualSave, lastSaved }) => {
   const [showCalculator, setShowCalculator] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [patientToDelete, setPatientToDelete] = useState<PatientInfo | null>(null);
 
   const filteredPatients = patients.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.idNumber.includes(searchTerm) ||
     p.condition.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const confirmDelete = () => {
+    if (patientToDelete) {
+      onDeletePatient(patientToDelete.id);
+      setPatientToDelete(null);
+    }
+  };
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700 relative pb-20">
@@ -51,6 +63,35 @@ const PhysioDashboard: React.FC<PhysioDashboardProps> = ({ patients, onSelectPat
             onSelectPatient(p);
           }}
         />
+      )}
+
+      {/* Modal de Confirmación de Eliminación */}
+      {patientToDelete && (
+        <div className="fixed inset-0 z-[200] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl animate-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-8">
+              <AlertTriangle size={40} />
+            </div>
+            <h3 className="text-2xl font-black text-center text-slate-800 tracking-tight">¿Eliminar Registro?</h3>
+            <p className="text-slate-500 text-center mt-3 mb-10 text-sm leading-relaxed">
+              Estás a punto de eliminar permanentemente la HCE de <span className="font-bold text-slate-800">{patientToDelete.name}</span>. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex flex-col gap-4">
+              <button 
+                onClick={confirmDelete} 
+                className="w-full bg-red-600 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-red-100 hover:bg-red-700 transition-all"
+              >
+                Sí, Eliminar Permanentemente
+              </button>
+              <button 
+                onClick={() => setPatientToDelete(null)} 
+                className="w-full bg-slate-50 text-slate-600 py-5 rounded-[2rem] font-bold text-xs uppercase tracking-widest"
+              >
+                Cancelar Acción
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -123,11 +164,8 @@ const PhysioDashboard: React.FC<PhysioDashboardProps> = ({ patients, onSelectPat
           {filteredPatients.map((p) => (
             <div 
               key={p.id} 
-              onClick={(e) => {
-                e.preventDefault();
-                onSelectPatient(p);
-              }}
               className="group bg-white/50 backdrop-blur-xl border border-white/40 rounded-[3rem] p-8 hover:bg-white hover:border-blue-200 transition-all cursor-pointer shadow-sm hover:shadow-2xl flex flex-col relative overflow-hidden active:scale-[0.98]"
+              onClick={() => onSelectPatient(p)}
               role="button"
               tabIndex={0}
             >
@@ -141,6 +179,16 @@ const PhysioDashboard: React.FC<PhysioDashboardProps> = ({ patients, onSelectPat
                   <h4 className="font-bold text-slate-800 text-lg truncate group-hover:text-blue-600 transition-colors leading-tight">{p.name}</h4>
                   <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.15em] mt-1">{p.idNumber}</p>
                 </div>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPatientToDelete(p);
+                  }}
+                  className="p-3 bg-slate-50 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100"
+                  title="Eliminar Paciente"
+                >
+                  <Trash2 size={18} />
+                </button>
               </div>
 
               <div className="space-y-4 flex-1 relative z-10">
@@ -153,7 +201,6 @@ const PhysioDashboard: React.FC<PhysioDashboardProps> = ({ patients, onSelectPat
                   </span>
                 </div>
                 
-                {/* Evolución rápida en tarjeta */}
                 <div className="grid grid-cols-1 gap-2 mt-4">
                   <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wide">
                     <CalendarDays size={14} className="text-blue-400" />

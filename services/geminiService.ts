@@ -66,6 +66,40 @@ export const getAssistantResponse = async (userMessage: string, patient: Patient
   }
 };
 
+export const getClinicalAnalysis = async (findings: string, patient: PatientInfo): Promise<string> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: `Actúa como un consultor senior en fisioterapia y razonamiento clínico. 
+      
+      DATOS DEL PACIENTE:
+      - Edad: ${patient.age}
+      - Condición reportada: ${patient.condition}
+      - Diagnóstico previo: ${patient.diagnosis}
+      - Historia: ${patient.illnessHistory}
+      
+      NUEVOS HALLAZGOS CLÍNICOS (Exploración actual):
+      "${findings}"
+      
+      Basado en esta información:
+      1. Sugiere 2-3 POSIBLES DIAGNÓSTICOS FISIOTERÁPICOS o diferenciales.
+      2. Propón un PLAN TERAPÉUTICO detallado (Objetivos a corto/medio plazo, técnicas manuales sugeridas y progresión de ejercicios).
+      
+      Formatea la respuesta con Markdown claro, usando negritas para los títulos. 
+      Usa un tono profesional, científico y basado en la evidencia.
+      IMPORTANTE: Incluye una nota al final indicando que esto es una sugerencia de soporte a la decisión clínica y debe ser validada por el profesional.`,
+      config: {
+        temperature: 0.4, // Menor temperatura para mayor precisión clínica
+      },
+    });
+
+    return response.text || "No se pudo generar el análisis clínico.";
+  } catch (error) {
+    console.error("Clinical Analysis Error:", error);
+    return "Error al conectar con el motor de razonamiento clínico.";
+  }
+};
+
 export const getGlobalAIResponse = async (message: string, role: 'patient' | 'physio', context?: any): Promise<string> => {
   const model = 'gemini-3-flash-preview';
   let systemInstruction = "";

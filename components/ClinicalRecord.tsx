@@ -35,25 +35,34 @@ import {
   CalendarDays,
   Dumbbell,
   StretchHorizontal,
-  Move
+  Move,
+  Trash2,
+  Brain,
+  Loader2
 } from 'lucide-react';
 import { PatientInfo, DiagnosticType, ClinicalNote, VitalSigns, Exercise } from '../types';
+import { getClinicalAnalysis } from '../services/geminiService';
 
 interface ClinicalRecordProps {
   patient: PatientInfo;
   onBack: () => void;
   onManagePlan: () => void;
   onUpdatePatient: (patient: PatientInfo) => void;
+  onDeletePatient: (id: string) => void;
 }
 
-const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onManagePlan, onUpdatePatient }) => {
+const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onManagePlan, onUpdatePatient, onDeletePatient }) => {
   const [activeTab, setActiveTab] = useState<'summary' | 'notes' | 'exercises' | 'diagnostics'>('summary');
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isEditingData, setIsEditingData] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+  const [clinicalFindings, setClinicalFindings] = useState('');
+  const [aiAnalysisResult, setAiAnalysisResult] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [noteType, setNoteType] = useState<'Evolución' | 'Plan de Trabajo'>('Evolución');
   const [selectedExerciseDetail, setSelectedExerciseDetail] = useState<Exercise | null>(null);
   
-  // Estado para la edición de datos
   const [editFormData, setEditFormData] = useState<PatientInfo>({ ...patient });
 
   const getCurrentDateTimeLocal = () => {
@@ -82,6 +91,19 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   const handleSaveEdit = () => {
     onUpdatePatient(editFormData);
     setIsEditingData(false);
+  };
+
+  const handleDelete = () => {
+    onDeletePatient(patient.id);
+    setShowDeleteConfirm(false);
+  };
+
+  const handleAiAnalysis = async () => {
+    if (!clinicalFindings.trim()) return;
+    setIsAnalysisLoading(true);
+    const result = await getClinicalAnalysis(clinicalFindings, patient);
+    setAiAnalysisResult(result);
+    setIsAnalysisLoading(false);
   };
 
   const handleAddNoteClick = (type: 'Evolución' | 'Plan de Trabajo') => {
@@ -156,6 +178,98 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-20 relative">
       
+      {/* Modal de Análisis Clínico IA */}
+      {isAnalyzing && (
+        <div className="fixed inset-0 z-[160] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] flex flex-col">
+             <header className="p-8 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md"><Brain size={32} /></div>
+                  <div>
+                    <h3 className="text-2xl font-black tracking-tight">Análisis Clínico Inteligente</h3>
+                    <p className="text-blue-100 text-xs font-bold uppercase tracking-widest opacity-80">Soporte a la Decisión Basada en Evidencia</p>
+                  </div>
+                </div>
+                <button onClick={() => {setIsAnalyzing(false); setAiAnalysisResult('');}} className="p-3 hover:bg-white/10 rounded-2xl transition-colors"><X size={28} /></button>
+             </header>
+
+             <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Hallazgos de la Exploración</h4>
+                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg italic">IA analizará estos datos junto al historial</span>
+                  </div>
+                  <textarea 
+                    value={clinicalFindings}
+                    onChange={(e) => setClinicalFindings(e.target.value)}
+                    placeholder="Describa los hallazgos actuales: tests ortopédicos positivos, balance articular, escala visual analógica (EVA), comportamiento del síntoma, etc..."
+                    rows={4}
+                    className="w-full p-6 rounded-3xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-700 transition-all shadow-inner"
+                  />
+                  <button 
+                    onClick={handleAiAnalysis}
+                    disabled={isAnalysisLoading || !clinicalFindings.trim()}
+                    className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    {isAnalysisLoading ? <><Loader2 className="animate-spin" /> Procesando con IA...</> : <><Sparkles size={18} /> Generar Diagnóstico y Plan Sugerido</>}
+                  </button>
+                </section>
+
+                {aiAnalysisResult && (
+                  <section className="animate-in fade-in slide-in-from-bottom duration-500">
+                    <div className="bg-indigo-50/50 rounded-[2.5rem] border border-indigo-100 p-8 space-y-6">
+                       <div className="flex items-center gap-3 mb-2">
+                          <Check className="text-emerald-500 w-6 h-6" />
+                          <h4 className="text-xl font-black text-slate-800">Resultados del Motor de Razonamiento</h4>
+                       </div>
+                       <div className="prose prose-slate max-w-none text-slate-700 text-sm leading-relaxed font-medium">
+                         {aiAnalysisResult.split('\n').map((line, i) => (
+                           <p key={i} className={line.startsWith('#') ? 'font-black text-blue-800 text-lg mt-6' : line.startsWith('-') ? 'ml-4 list-disc' : ''}>
+                             {line.replace(/^#+\s*/, '')}
+                           </p>
+                         ))}
+                       </div>
+                       <div className="pt-6 border-t border-indigo-100 flex gap-4">
+                          <button className="flex-1 bg-white border border-indigo-200 text-indigo-600 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-colors">Copiar al Historial</button>
+                          <button className="flex-1 bg-white border border-indigo-200 text-indigo-600 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-colors">Exportar Informe</button>
+                       </div>
+                    </div>
+                  </section>
+                )}
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Eliminación */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[150] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl animate-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-8">
+              <AlertTriangle size={40} />
+            </div>
+            <h3 className="text-2xl font-black text-center text-slate-800 tracking-tight">¿Confirmar Baja?</h3>
+            <p className="text-slate-500 text-center mt-3 mb-10 text-sm leading-relaxed">
+              ¿Estás seguro de que deseas eliminar permanentemente la ficha de <span className="font-bold text-slate-800">{patient.name}</span>? Esta acción es irreversible.
+            </p>
+            <div className="flex flex-col gap-4">
+              <button 
+                onClick={handleDelete} 
+                className="w-full bg-red-600 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-red-100 hover:bg-red-700 transition-all"
+              >
+                Sí, Eliminar Registro
+              </button>
+              <button 
+                onClick={() => setShowDeleteConfirm(false)} 
+                className="w-full bg-slate-50 text-slate-600 py-5 rounded-[2rem] font-bold text-xs uppercase tracking-widest"
+              >
+                No, Mantener Ficha
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Edición Integral de Datos */}
       {isEditingData && (
         <div className="fixed inset-0 z-[120] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
@@ -181,6 +295,16 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
                   <EditArea label="Medicación / Tratamientos Otros" value={editFormData.otherTreatments} onChange={v => setEditFormData({...editFormData, otherTreatments: v})} />
                 </div>
                 <EditArea label="Señales de Alarma" value={editFormData.warningSigns} onChange={v => setEditFormData({...editFormData, warningSigns: v})} />
+                
+                <div className="pt-6 border-t border-slate-100">
+                   <h4 className="text-red-600 font-black text-[10px] uppercase tracking-[0.2em] mb-4">Zona de Riesgo</h4>
+                   <button 
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center gap-2 text-red-600 hover:bg-red-50 px-6 py-4 rounded-2xl transition-all border border-red-100 font-bold text-xs uppercase tracking-widest"
+                   >
+                     <Trash2 size={16} /> Eliminar HCE Permanentemente
+                   </button>
+                </div>
              </div>
              <footer className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
                 <button onClick={() => setIsEditingData(false)} className="flex-1 py-4 font-bold text-slate-500 hover:bg-slate-100 rounded-2xl">Cancelar</button>
@@ -216,81 +340,6 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
         </div>
       )}
 
-      {isAddingNote && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-            <header className={`p-6 text-white flex justify-between items-center ${noteType === 'Evolución' ? 'bg-blue-600' : 'bg-green-600'}`}>
-              <div className="flex items-center gap-3">
-                {noteType === 'Evolución' ? <Clipboard size={24} /> : <Activity size={24} />}
-                <div>
-                  <h3 className="font-bold text-lg">Nueva Nota de {noteType}</h3>
-                  <p className="text-[10px] uppercase font-black tracking-widest opacity-70">{patient.name}</p>
-                </div>
-              </div>
-              <button onClick={() => setIsAddingNote(false)} className="p-2 hover:bg-white/10 rounded-xl"><X size={24} /></button>
-            </header>
-
-            <div className="p-8 space-y-6 overflow-y-auto max-h-[70vh] custom-scrollbar">
-              <section className="space-y-2">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha y Hora de la Nota</h4>
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
-                  <input 
-                    type="datetime-local" 
-                    value={newNote.date}
-                    onChange={(e) => setNewNote({...newNote, date: e.target.value})}
-                    className="w-full pl-12 pr-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-700"
-                  />
-                </div>
-              </section>
-
-              {noteType === 'Evolución' && (
-                <section className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Constantes Vitales en Sesión</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <VitalInput label="FC (lpm)" value={newNote.hr} onChange={(v) => setNewNote({...newNote, hr: v})} />
-                    <VitalInput label="TA (mmHg)" value={newNote.bp} onChange={(v) => setNewNote({...newNote, bp: v})} />
-                    <VitalInput label="SatO2 (%)" value={newNote.spo2} onChange={(v) => setNewNote({...newNote, spo2: v})} />
-                    <VitalInput label="Temp (ºC)" value={newNote.temp} onChange={(v) => setNewNote({...newNote, temp: v})} />
-                  </div>
-                </section>
-              )}
-
-              <section className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nivel de Dolor (EVA 1-10)</h4>
-                  <span className="text-xl font-black text-blue-600">{newNote.painLevel}</span>
-                </div>
-                <input 
-                  type="range" min="1" max="10" 
-                  value={newNote.painLevel} 
-                  onChange={(e) => setNewNote({...newNote, painLevel: parseInt(e.target.value)})}
-                  className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                />
-              </section>
-
-              <section className="space-y-2">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Razonamiento Clínico / Observaciones</h4>
-                <textarea 
-                  rows={5}
-                  value={newNote.content}
-                  onChange={(e) => setNewNote({...newNote, content: e.target.value})}
-                  placeholder={noteType === 'Evolución' ? "Describa la evolución del paciente, cambios en la sintomatología..." : "Anotaciones sobre la técnica, progresión de cargas o modificaciones del plan..."}
-                  className="w-full p-5 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-700"
-                ></textarea>
-              </section>
-            </div>
-
-            <footer className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
-              <button onClick={() => setIsAddingNote(false)} className="flex-1 py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-100 transition-all">Cancelar</button>
-              <button onClick={handleSaveNote} className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
-                <Save size={18} /> Guardar Nota Clínica
-              </button>
-            </footer>
-          </div>
-        </div>
-      )}
-
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/70 backdrop-blur-lg p-4 rounded-3xl border border-white/40 sticky top-0 z-30 shadow-lg">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-all font-bold text-[10px] uppercase tracking-wider group">
@@ -304,6 +353,9 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
           </button>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setIsAnalyzing(true)} className="bg-indigo-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-xl shadow-indigo-100">
+            <Brain size={14} /> Análisis IA
+          </button>
           <button onClick={() => setIsEditingData(true)} className="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
             <Edit2 size={14} /> Editar Historia
           </button>
@@ -336,23 +388,22 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
           </div>
         </div>
 
-        {/* Círculo de progreso - Corregido viewBox para evitar cortes */}
         <div className="bg-slate-50 p-8 rounded-[3rem] border border-slate-100 flex items-center gap-8 min-w-[380px] z-10 shadow-inner">
-          <div className="relative w-32 h-32 flex items-center justify-center shrink-0">
-             <svg className="w-full h-full -rotate-90 drop-shadow-md" viewBox="0 0 120 120">
+          <div className="relative w-36 h-36 flex items-center justify-center shrink-0">
+             <svg className="w-full h-full -rotate-90 overflow-visible" viewBox="-10 -10 140 140">
                <circle cx="60" cy="60" r="50" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-200" />
                <circle 
                 cx="60" cy="60" r="50" 
                 stroke="currentColor" 
                 strokeWidth="12" 
                 fill="transparent" 
-                strokeDasharray={314} 
-                strokeDashoffset={314 * (1 - patient.progress / 100)} 
+                strokeDasharray={314.159} 
+                strokeDashoffset={314.159 * (1 - patient.progress / 100)} 
                 strokeLinecap="round"
                 className="text-blue-600 transition-all duration-1000 ease-out" 
                />
              </svg>
-             <span className="absolute text-2xl font-black text-slate-800 tracking-tighter">{patient.progress}%</span>
+             <span className="absolute text-3xl font-black text-slate-800 tracking-tighter">{patient.progress}%</span>
           </div>
           <div className="flex-1 space-y-2">
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none">Recuperación</p>
@@ -475,7 +526,7 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
               <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden group">
                 <div className="flex items-center gap-3 mb-6 relative z-10"><Sparkles className="w-6 h-6 text-yellow-300" /><h4 className="font-bold text-lg">Asistente Clínico IA</h4></div>
                 <p className="text-blue-50 text-sm italic mb-8 leading-relaxed relative z-10">"Basado en la última evolución, el paciente está listo para aumentar la carga en sentadillas."</p>
-                <button className="w-full bg-white text-blue-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg">Analizar Historial</button>
+                <button onClick={() => setIsAnalyzing(true)} className="w-full bg-white text-blue-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg">Analizar Hallazgos</button>
               </div>
 
               <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">

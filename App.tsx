@@ -42,7 +42,7 @@ import { UserRole, PatientInfo, Exercise, PhysioUser } from './types';
 
 type AppEnv = 'demo' | 'final' | null;
 
-const APP_VERSION = "v2.5.2-EBP"; 
+const APP_VERSION = "v2.5.5-EBP"; 
 
 const App: React.FC = () => {
   const [env, setEnv] = useState<AppEnv>(null);
@@ -180,6 +180,14 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeletePatient = (id: string) => {
+    setPatients(prev => prev.filter(p => p.id !== id));
+    if (selectedPatient?.id === id) {
+      setSelectedPatient(null);
+      setCurrentView('physio-dashboard');
+    }
+  };
+
   const handleAddPatient = (newPatient: PatientInfo) => {
     setPatients(prev => [...prev, newPatient]);
     setCurrentView('physio-dashboard');
@@ -216,11 +224,11 @@ const App: React.FC = () => {
       }
     } else {
       switch (currentView) {
-        case 'physio-dashboard': return <PhysioDashboard patients={patients} onSelectPatient={handleSelectPatient} onAddNew={() => setCurrentView('new-patient')} onManualSave={handleManualSave} lastSaved={lastSaved} />;
+        case 'physio-dashboard': return <PhysioDashboard patients={patients} onSelectPatient={handleSelectPatient} onDeletePatient={handleDeletePatient} onAddNew={() => setCurrentView('new-patient')} onManualSave={handleManualSave} lastSaved={lastSaved} />;
         case 'new-patient': return <NewPatientForm onSave={handleAddPatient} onCancel={() => setCurrentView('physio-dashboard')} />;
-        case 'clinical-record': return selectedPatient ? <ClinicalRecord patient={selectedPatient} onBack={() => setCurrentView('physio-dashboard')} onManagePlan={() => setCurrentView('exercise-manager')} onUpdatePatient={handleUpdatePatient} /> : null;
+        case 'clinical-record': return selectedPatient ? <ClinicalRecord patient={selectedPatient} onBack={() => setCurrentView('physio-dashboard')} onManagePlan={() => setCurrentView('exercise-manager')} onUpdatePatient={handleUpdatePatient} onDeletePatient={handleDeletePatient} /> : null;
         case 'exercise-manager': return <ExerciseManager patients={patients} initialSelectedPatient={selectedPatient} onUpdatePlan={handleUpdatePatientExercises} />;
-        default: return <PhysioDashboard patients={patients} onSelectPatient={handleSelectPatient} onAddNew={() => setCurrentView('new-patient')} onManualSave={handleManualSave} lastSaved={lastSaved} />;
+        default: return <PhysioDashboard patients={patients} onSelectPatient={handleSelectPatient} onDeletePatient={handleDeletePatient} onAddNew={() => setCurrentView('new-patient')} onManualSave={handleManualSave} lastSaved={lastSaved} />;
       }
     }
   };
