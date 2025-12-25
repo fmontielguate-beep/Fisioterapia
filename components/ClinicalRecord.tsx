@@ -1,46 +1,13 @@
 
 import React, { useState } from 'react';
 import { 
-  ArrowLeft, 
-  Plus, 
-  Calendar, 
-  Clipboard, 
-  Stethoscope, 
-  Activity, 
-  Sparkles,
-  ChevronRight,
-  TrendingUp,
-  FileText,
-  Heart,
-  Wind,
-  Thermometer,
-  AlertTriangle,
-  Beaker,
-  Zap,
-  Layers,
-  Search,
-  Check,
-  Edit2,
-  Home,
-  ShieldAlert,
-  Info,
-  Save,
-  BookOpen,
-  ClipboardList,
-  Pill,
-  GraduationCap,
-  X,
-  Clock,
-  User,
-  CalendarDays,
-  Dumbbell,
-  StretchHorizontal,
-  Move,
-  Trash2,
-  Brain,
-  Loader2
+  ArrowLeft, Plus, Calendar, Clipboard, Stethoscope, Activity, Sparkles, ChevronRight, TrendingUp,
+  FileText, Heart, Wind, Thermometer, AlertTriangle, Beaker, Zap, Layers, Search, Check, Edit2,
+  Home, ShieldAlert, Info, Save, BookOpen, ClipboardList, Pill, GraduationCap, X, Clock,
+  User, CalendarDays, Dumbbell, StretchHorizontal, Move, Trash2, Brain, Loader2, CalendarPlus,
+  Eye, Fingerprint, Compass, FlaskConical, ChevronDown, Scale, Ruler, Zap as BMI
 } from 'lucide-react';
-import { PatientInfo, DiagnosticType, ClinicalNote, VitalSigns, Exercise } from '../types';
+import { PatientInfo, DiagnosticType, ClinicalNote, VitalSigns, Exercise, GoniometryRecord, OrthopedicTestResult, ActivityLevel } from '../types';
 import { getClinicalAnalysis } from '../services/geminiService';
 
 interface ClinicalRecordProps {
@@ -49,10 +16,11 @@ interface ClinicalRecordProps {
   onManagePlan: () => void;
   onUpdatePatient: (patient: PatientInfo) => void;
   onDeletePatient: (id: string) => void;
+  onOpenCalendar: () => void;
 }
 
-const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onManagePlan, onUpdatePatient, onDeletePatient }) => {
-  const [activeTab, setActiveTab] = useState<'summary' | 'notes' | 'exercises' | 'diagnostics'>('summary');
+const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onManagePlan, onUpdatePatient, onDeletePatient, onOpenCalendar }) => {
+  const [activeTab, setActiveTab] = useState<'summary' | 'exam' | 'diagnostics' | 'notes' | 'exercises'>('summary');
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isEditingData, setIsEditingData] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -61,41 +29,33 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   const [aiAnalysisResult, setAiAnalysisResult] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [noteType, setNoteType] = useState<'Evolución' | 'Plan de Trabajo'>('Evolución');
-  const [selectedExerciseDetail, setSelectedExerciseDetail] = useState<Exercise | null>(null);
   
   const [editFormData, setEditFormData] = useState<PatientInfo>({ ...patient });
 
-  const getCurrentDateTimeLocal = () => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
-  };
-
-  const [newNote, setNewNote] = useState({
-    date: getCurrentDateTimeLocal(),
-    content: '',
-    painLevel: 5,
-    hr: patient.vitalSigns.heartRate.toString(),
-    bp: patient.vitalSigns.bloodPressure,
-    spo2: patient.vitalSigns.oxygenSaturation.toString(),
-    temp: patient.vitalSigns.temperature.toString()
-  });
-
   const tabs = [
-    { id: 'summary', label: 'Resumen Clínico', icon: Stethoscope },
-    { id: 'diagnostics', label: 'Estudios / Pruebas', icon: FileText },
+    { id: 'summary', label: 'Resumen', icon: Stethoscope },
+    { id: 'exam', label: 'Exploración', icon: FlaskConical },
+    { id: 'diagnostics', label: 'Pruebas / Tests', icon: FileText },
     { id: 'notes', label: 'Evolución', icon: Clipboard },
-    { id: 'exercises', label: 'Plan de Trabajo', icon: Activity },
+    { id: 'exercises', label: 'Plan', icon: Activity },
   ];
 
   const handleSaveEdit = () => {
-    onUpdatePatient(editFormData);
-    setIsEditingData(false);
-  };
+    // Recalcular IMC antes de guardar por si acaso
+    const weight = editFormData.vitalSigns.weight;
+    const heightM = editFormData.vitalSigns.height / 100;
+    const bmi = weight / (heightM * heightM);
+    
+    const finalData = {
+      ...editFormData,
+      vitalSigns: {
+        ...editFormData.vitalSigns,
+        bmi: parseFloat(bmi.toFixed(2))
+      }
+    };
 
-  const handleDelete = () => {
-    onDeletePatient(patient.id);
-    setShowDeleteConfirm(false);
+    onUpdatePatient(finalData);
+    setIsEditingData(false);
   };
 
   const handleAiAnalysis = async () => {
@@ -106,551 +66,311 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
     setIsAnalysisLoading(false);
   };
 
-  const handleAddNoteClick = (type: 'Evolución' | 'Plan de Trabajo') => {
-    setNoteType(type);
-    setNewNote(prev => ({ ...prev, date: getCurrentDateTimeLocal() }));
-    setIsAddingNote(true);
-  };
-
-  const handleSaveNote = () => {
-    const vitalSigns: VitalSigns = {
-      heartRate: parseInt(newNote.hr),
-      bloodPressure: newNote.bp,
-      oxygenSaturation: parseInt(newNote.spo2),
-      temperature: parseFloat(newNote.temp)
-    };
-
-    const displayDate = new Date(newNote.date).toLocaleString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-
-    const note: ClinicalNote = {
-      id: Date.now().toString(),
-      date: displayDate,
-      content: newNote.content,
-      painLevel: newNote.painLevel,
-      author: 'Fisio Manuel G.',
-      vitalSigns: noteType === 'Evolución' ? vitalSigns : undefined,
-      type: noteType
-    };
-
-    const updatedPatient = {
-      ...patient,
-      notes: [note, ...patient.notes],
-      lastSession: 'Hoy',
-      vitalSigns: noteType === 'Evolución' ? vitalSigns : patient.vitalSigns
-    };
-
-    onUpdatePatient(updatedPatient);
-    setIsAddingNote(false);
-    setNewNote({ ...newNote, content: '', date: getCurrentDateTimeLocal() }); 
-    setActiveTab(noteType === 'Evolución' ? 'notes' : 'exercises');
-  };
-
-  const getExerciseIcon = (category: string) => {
-    switch(category) {
-      case 'Fuerza': return <Dumbbell className="w-6 h-6" />;
-      case 'Estiramiento': return <StretchHorizontal className="w-6 h-6" />;
-      case 'Movilidad': return <Move className="w-6 h-6" />;
-      default: return <Activity className="w-6 h-6" />;
-    }
-  };
-
-  const getStudyIcon = (type: DiagnosticType) => {
-    switch(type) {
-      case 'Sanguínea': return <Beaker className="w-5 h-5 text-red-500" />;
-      case 'Neuroconducción': return <Zap className="w-5 h-5 text-yellow-500" />;
-      case 'Radiología': return <Layers className="w-5 h-5 text-blue-500" />;
-      case 'Imagen Avanzada': return <Search className="w-5 h-5 text-purple-500" />;
-      default: return <FileText className="w-5 h-5 text-slate-400" />;
-    }
-  };
-
-  const openScholarSearch = () => {
-    const query = encodeURIComponent(`fisioterapia evidencia "${patient.diagnosis || patient.condition}"`);
-    window.open(`https://scholar.google.es/scholar?q=${query}`, '_blank');
+  const getBMIColor = (bmi: number) => {
+    if (bmi < 18.5) return 'text-blue-500';
+    if (bmi < 25) return 'text-emerald-500';
+    if (bmi < 30) return 'text-orange-500';
+    return 'text-red-500';
   };
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-20 relative">
       
-      {/* Modal de Análisis Clínico IA */}
+      {/* Modal de Edición de Datos */}
+      {isEditingData && (
+        <div className="fixed inset-0 z-[170] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] flex flex-col">
+            <header className="p-8 bg-slate-900 text-white flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/10 rounded-2xl"><Edit2 size={24} /></div>
+                <div>
+                  <h3 className="text-2xl font-black tracking-tight">Editar Historia Clínica</h3>
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Modificando ficha de {patient.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsEditingData(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-colors"><X size={28} /></button>
+            </header>
+            
+            <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
+              <section className="space-y-6">
+                <h4 className="text-xs font-black text-blue-600 uppercase tracking-[0.2em] border-b pb-2">Información Básica</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre Completo</label>
+                    <input type="text" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} className="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Condición Principal</label>
+                    <input type="text" value={editFormData.condition} onChange={e => setEditFormData({...editFormData, condition: e.target.value})} className="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nivel de Actividad</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {(['Sedentario', 'Leve', 'Moderado', 'Activo', 'Muy Activo'] as ActivityLevel[]).map(level => (
+                      <button 
+                        key={level} type="button" 
+                        onClick={() => setEditFormData({...editFormData, physicalActivityLevel: level})}
+                        className={`py-3 rounded-xl border text-[9px] font-black uppercase transition-all ${editFormData.physicalActivityLevel === level ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-100 text-slate-400 hover:bg-slate-50'}`}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-6">
+                <h4 className="text-xs font-black text-red-600 uppercase tracking-[0.2em] border-b pb-2">Constantes Vitales</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">FC (lpm)</label>
+                    <input type="number" value={editFormData.vitalSigns.heartRate} onChange={e => setEditFormData({...editFormData, vitalSigns: {...editFormData.vitalSigns, heartRate: parseInt(e.target.value)}})} className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 font-bold" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">FR (rpm)</label>
+                    <input type="number" value={editFormData.vitalSigns.respiratoryRate} onChange={e => setEditFormData({...editFormData, vitalSigns: {...editFormData.vitalSigns, respiratoryRate: parseInt(e.target.value)}})} className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 font-bold" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">SatO2 (%)</label>
+                    <input type="number" value={editFormData.vitalSigns.oxygenSaturation} onChange={e => setEditFormData({...editFormData, vitalSigns: {...editFormData.vitalSigns, oxygenSaturation: parseInt(e.target.value)}})} className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 font-bold" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Tensión</label>
+                    <input type="text" value={editFormData.vitalSigns.bloodPressure} onChange={e => setEditFormData({...editFormData, vitalSigns: {...editFormData.vitalSigns, bloodPressure: e.target.value}})} className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 font-bold" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Peso (kg)</label>
+                    <input type="number" value={editFormData.vitalSigns.weight} onChange={e => setEditFormData({...editFormData, vitalSigns: {...editFormData.vitalSigns, weight: parseFloat(e.target.value)}})} className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 font-bold" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Talla (cm)</label>
+                    <input type="number" value={editFormData.vitalSigns.height} onChange={e => setEditFormData({...editFormData, vitalSigns: {...editFormData.vitalSigns, height: parseFloat(e.target.value)}})} className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 font-bold" />
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-6">
+                <h4 className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] border-b pb-2">Exploración Clínica</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Inspección Visual</label>
+                    <textarea rows={3} value={editFormData.physicalExam.visualInspection} onChange={e => setEditFormData({...editFormData, physicalExam: {...editFormData.physicalExam, visualInspection: e.target.value}})} className="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 font-medium text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Palpación</label>
+                    <textarea rows={3} value={editFormData.physicalExam.palpation} onChange={e => setEditFormData({...editFormData, physicalExam: {...editFormData.physicalExam, palpation: e.target.value}})} className="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 font-medium text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <footer className="p-8 bg-slate-50 border-t border-slate-200 flex gap-4">
+              <button onClick={() => setIsEditingData(false)} className="flex-1 py-4 bg-white border border-slate-200 text-slate-400 rounded-2xl font-bold uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all">Cancelar</button>
+              <button onClick={handleSaveEdit} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                <Save size={18} /> Guardar Cambios
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Análisis IA */}
       {isAnalyzing && (
         <div className="fixed inset-0 z-[160] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] flex flex-col">
-             <header className="p-8 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex justify-between items-center shrink-0">
+             <header className="p-8 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md"><Brain size={32} /></div>
+                  <div className="p-3 bg-white/20 rounded-2xl"><Brain size={32} /></div>
                   <div>
-                    <h3 className="text-2xl font-black tracking-tight">Análisis Clínico Inteligente</h3>
-                    <p className="text-blue-100 text-xs font-bold uppercase tracking-widest opacity-80">Soporte a la Decisión Basada en Evidencia</p>
+                    <h3 className="text-2xl font-black tracking-tight">Análisis Clínico Avanzado</h3>
+                    <p className="text-blue-100 text-[10px] font-bold uppercase tracking-widest opacity-80">Soporte a la Decisión Clínica EBP</p>
                   </div>
                 </div>
-                <button onClick={() => {setIsAnalyzing(false); setAiAnalysisResult('');}} className="p-3 hover:bg-white/10 rounded-2xl transition-colors"><X size={28} /></button>
+                <button onClick={() => setIsAnalyzing(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-colors"><X size={28} /></button>
              </header>
-
              <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
                 <section className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Hallazgos de la Exploración</h4>
-                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg italic">IA analizará estos datos junto al historial</span>
-                  </div>
+                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Hallazgos Actuales</h4>
                   <textarea 
-                    value={clinicalFindings}
-                    onChange={(e) => setClinicalFindings(e.target.value)}
-                    placeholder="Describa los hallazgos actuales: tests ortopédicos positivos, balance articular, escala visual analógica (EVA), comportamiento del síntoma, etc..."
-                    rows={4}
-                    className="w-full p-6 rounded-3xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-700 transition-all shadow-inner"
+                    value={clinicalFindings} onChange={(e) => setClinicalFindings(e.target.value)}
+                    placeholder="Describe los nuevos hallazgos, EVA, respuesta a la carga..."
+                    rows={4} className="w-full p-6 rounded-3xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
                   />
-                  <button 
-                    onClick={handleAiAnalysis}
-                    disabled={isAnalysisLoading || !clinicalFindings.trim()}
-                    className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                  >
-                    {isAnalysisLoading ? <><Loader2 className="animate-spin" /> Procesando con IA...</> : <><Sparkles size={18} /> Generar Diagnóstico y Plan Sugerido</>}
+                  <button onClick={handleAiAnalysis} disabled={isAnalysisLoading || !clinicalFindings.trim()} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase text-xs shadow-xl flex items-center justify-center gap-3">
+                    {isAnalysisLoading ? <><Loader2 className="animate-spin" /> Procesando Motor Clínico...</> : <><Sparkles size={18} /> Generar Análisis IA</>}
                   </button>
                 </section>
-
                 {aiAnalysisResult && (
-                  <section className="animate-in fade-in slide-in-from-bottom duration-500">
-                    <div className="bg-indigo-50/50 rounded-[2.5rem] border border-indigo-100 p-8 space-y-6">
-                       <div className="flex items-center gap-3 mb-2">
-                          <Check className="text-emerald-500 w-6 h-6" />
-                          <h4 className="text-xl font-black text-slate-800">Resultados del Motor de Razonamiento</h4>
-                       </div>
-                       <div className="prose prose-slate max-w-none text-slate-700 text-sm leading-relaxed font-medium">
-                         {aiAnalysisResult.split('\n').map((line, i) => (
-                           <p key={i} className={line.startsWith('#') ? 'font-black text-blue-800 text-lg mt-6' : line.startsWith('-') ? 'ml-4 list-disc' : ''}>
-                             {line.replace(/^#+\s*/, '')}
-                           </p>
-                         ))}
-                       </div>
-                       <div className="pt-6 border-t border-indigo-100 flex gap-4">
-                          <button className="flex-1 bg-white border border-indigo-200 text-indigo-600 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-colors">Copiar al Historial</button>
-                          <button className="flex-1 bg-white border border-indigo-200 text-indigo-600 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-colors">Exportar Informe</button>
-                       </div>
-                    </div>
-                  </section>
+                  <div className="bg-indigo-50/50 rounded-[2.5rem] border border-indigo-100 p-8 animate-in fade-in">
+                    <h4 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-3"><Check className="text-emerald-500" /> Diagnóstico y Planificación Sugerida</h4>
+                    <div className="prose prose-slate max-w-none text-slate-700 text-sm leading-relaxed whitespace-pre-wrap font-medium">{aiAnalysisResult}</div>
+                  </div>
                 )}
              </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Confirmación de Eliminación */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[150] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl animate-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-8">
-              <AlertTriangle size={40} />
-            </div>
-            <h3 className="text-2xl font-black text-center text-slate-800 tracking-tight">¿Confirmar Baja?</h3>
-            <p className="text-slate-500 text-center mt-3 mb-10 text-sm leading-relaxed">
-              ¿Estás seguro de que deseas eliminar permanentemente la ficha de <span className="font-bold text-slate-800">{patient.name}</span>? Esta acción es irreversible.
-            </p>
-            <div className="flex flex-col gap-4">
-              <button 
-                onClick={handleDelete} 
-                className="w-full bg-red-600 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-red-100 hover:bg-red-700 transition-all"
-              >
-                Sí, Eliminar Registro
-              </button>
-              <button 
-                onClick={() => setShowDeleteConfirm(false)} 
-                className="w-full bg-slate-50 text-slate-600 py-5 rounded-[2rem] font-bold text-xs uppercase tracking-widest"
-              >
-                No, Mantener Ficha
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Edición Integral de Datos */}
-      {isEditingData && (
-        <div className="fixed inset-0 z-[120] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] flex flex-col">
-             <header className="p-6 bg-slate-900 text-white flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Edit2 size={24} className="text-emerald-400" />
-                  <h3 className="font-bold text-lg">Editar Historia Clínica</h3>
-                </div>
-                <button onClick={() => setIsEditingData(false)} className="p-2 hover:bg-white/10 rounded-xl"><X size={24} /></button>
-             </header>
-             <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <EditField label="Nombre" value={editFormData.name} onChange={v => setEditFormData({...editFormData, name: v})} />
-                  <EditField label="DNI" value={editFormData.idNumber} onChange={v => setEditFormData({...editFormData, idNumber: v})} />
-                  <EditField label="Edad" value={editFormData.age.toString()} type="number" onChange={v => setEditFormData({...editFormData, age: parseInt(v) || 0})} />
-                  <EditField label="Condición / Patología" value={editFormData.condition} onChange={v => setEditFormData({...editFormData, condition: v})} />
-                </div>
-                <EditArea label="Diagnóstico Médico" value={editFormData.diagnosis} onChange={v => setEditFormData({...editFormData, diagnosis: v})} />
-                <EditArea label="Historia del Padecimiento Actual" value={editFormData.illnessHistory} onChange={v => setEditFormData({...editFormData, illnessHistory: v})} rows={5} />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <EditArea label="Antecedentes / Comorbilidades" value={editFormData.medicalHistory} onChange={v => setEditFormData({...editFormData, medicalHistory: v})} />
-                  <EditArea label="Medicación / Tratamientos Otros" value={editFormData.otherTreatments} onChange={v => setEditFormData({...editFormData, otherTreatments: v})} />
-                </div>
-                <EditArea label="Señales de Alarma" value={editFormData.warningSigns} onChange={v => setEditFormData({...editFormData, warningSigns: v})} />
-                
-                <div className="pt-6 border-t border-slate-100">
-                   <h4 className="text-red-600 font-black text-[10px] uppercase tracking-[0.2em] mb-4">Zona de Riesgo</h4>
-                   <button 
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="flex items-center gap-2 text-red-600 hover:bg-red-50 px-6 py-4 rounded-2xl transition-all border border-red-100 font-bold text-xs uppercase tracking-widest"
-                   >
-                     <Trash2 size={16} /> Eliminar HCE Permanentemente
-                   </button>
-                </div>
-             </div>
-             <footer className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
-                <button onClick={() => setIsEditingData(false)} className="flex-1 py-4 font-bold text-slate-500 hover:bg-slate-100 rounded-2xl">Cancelar</button>
-                <button onClick={handleSaveEdit} className="flex-[2] bg-emerald-600 text-white py-4 font-bold rounded-2xl shadow-xl shadow-emerald-100 flex items-center justify-center gap-2"><Save size={18} /> Guardar Cambios</button>
-             </footer>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Detalle Ejercicio */}
-      {selectedExerciseDetail && (
-        <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-             <div className="h-40 bg-slate-100 flex items-center justify-center relative">
-                <div className="p-6 bg-blue-600 text-white rounded-3xl shadow-xl">
-                  {getExerciseIcon(selectedExerciseDetail.category)}
-                </div>
-                <button onClick={() => setSelectedExerciseDetail(null)} className="absolute top-4 right-4 p-2 bg-white/80 rounded-full text-slate-500 hover:text-red-500"><X size={20}/></button>
-             </div>
-             <div className="p-8 space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-2xl font-black text-slate-800">{selectedExerciseDetail.title}</h3>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest">{selectedExerciseDetail.category}</span>
-                </div>
-                <p className="text-slate-600 font-medium leading-relaxed">{selectedExerciseDetail.description}</p>
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-blue-500" />
-                  <span className="text-sm font-bold text-slate-700">Dosis: {selectedExerciseDetail.reps}</span>
-                </div>
-                <button onClick={() => setSelectedExerciseDetail(null)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-widest text-xs mt-4">Entendido</button>
-             </div>
-          </div>
-        </div>
-      )}
-
+      {/* Cabecera Acciones */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/70 backdrop-blur-lg p-4 rounded-3xl border border-white/40 sticky top-0 z-30 shadow-lg">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-all font-bold text-[10px] uppercase tracking-wider group">
-            <div className="p-2 bg-white rounded-xl shadow-sm group-hover:bg-blue-50 transition-colors border border-slate-100"><ArrowLeft className="w-4 h-4" /></div>
+            <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100"><ArrowLeft className="w-4 h-4" /></div>
             <span>Volver</span>
           </button>
           <div className="h-8 w-px bg-slate-200"></div>
-          <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-green-600 transition-all font-bold text-[10px] uppercase tracking-wider group">
-             <div className="p-2 bg-white rounded-xl shadow-sm group-hover:bg-green-50 transition-colors border border-slate-100"><Home className="w-4 h-4" /></div>
-            <span>Inicio</span>
+          <button onClick={onOpenCalendar} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-all font-bold text-[10px] uppercase tracking-wider group">
+             <div className="p-2 bg-white rounded-xl shadow-sm group-hover:bg-indigo-50 border border-slate-100"><CalendarPlus className="w-4 h-4" /></div>
+            <span>Agendar</span>
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setIsAnalyzing(true)} className="bg-indigo-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-xl shadow-indigo-100">
+          <button onClick={() => setIsAnalyzing(true)} className="bg-indigo-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-xl">
             <Brain size={14} /> Análisis IA
           </button>
           <button onClick={() => setIsEditingData(true)} className="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
-            <Edit2 size={14} /> Editar Historia
-          </button>
-          <button onClick={() => handleAddNoteClick('Plan de Trabajo')} className="bg-green-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition-all flex items-center gap-2 shadow-xl shadow-green-100">
-            <Activity size={14} /> Nota Plan
-          </button>
-          <button onClick={() => handleAddNoteClick('Evolución')} className="bg-slate-800 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl">
-            <Plus size={14} /> Evolución
+            <Edit2 size={14} /> Editar
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl flex flex-col lg:flex-row justify-between items-stretch gap-8 relative overflow-hidden">
-        <div className="flex items-center gap-6 flex-1 z-10">
-          <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-4xl font-black shadow-lg">
-            {patient.name.charAt(0)}
-          </div>
+      {/* Info Paciente y Actividad */}
+      <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl flex flex-col lg:flex-row justify-between items-stretch gap-8 overflow-hidden">
+        <div className="flex items-center gap-6 flex-1">
+          <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-4xl font-black shadow-lg">{patient.name.charAt(0)}</div>
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-3xl font-bold text-slate-800 truncate">{patient.name}</h2>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${patient.patientType === 'Intrahospitalario' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
-                {patient.patientType}
-              </span>
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${patient.patientType === 'Intrahospitalario' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>{patient.patientType}</span>
             </div>
             <div className="flex flex-wrap gap-3 mt-3">
-              <div className="flex items-center gap-1.5 bg-slate-50 text-slate-500 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-100"><FileText size={12} /> {patient.idNumber}</div>
-              <div className="flex items-center gap-1.5 bg-slate-50 text-slate-500 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-100"><Calendar size={12} /> {patient.age} años</div>
-              <div className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-green-100"><Activity size={12} /> {patient.condition}</div>
+              <div className="flex items-center gap-1.5 bg-slate-50 text-slate-500 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-100"><Activity size={12} /> {patient.condition}</div>
+              <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-indigo-100"><TrendingUp size={12} /> Nivel: {patient.physicalActivityLevel}</div>
             </div>
           </div>
         </div>
-
-        <div className="bg-slate-50 p-8 rounded-[3rem] border border-slate-100 flex items-center gap-8 min-w-[380px] z-10 shadow-inner">
-          <div className="relative w-36 h-36 flex items-center justify-center shrink-0">
+        
+        <div className="bg-slate-50 p-8 rounded-[3rem] border border-slate-100 flex items-center gap-8 min-w-[380px] shadow-inner">
+          <div className="relative w-32 h-32 flex items-center justify-center shrink-0">
              <svg className="w-full h-full -rotate-90 overflow-visible" viewBox="-10 -10 140 140">
                <circle cx="60" cy="60" r="50" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-200" />
-               <circle 
-                cx="60" cy="60" r="50" 
-                stroke="currentColor" 
-                strokeWidth="12" 
-                fill="transparent" 
-                strokeDasharray={314.159} 
-                strokeDashoffset={314.159 * (1 - patient.progress / 100)} 
-                strokeLinecap="round"
-                className="text-blue-600 transition-all duration-1000 ease-out" 
-               />
+               <circle cx="60" cy="60" r="50" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={314.159} strokeDashoffset={314.159 * (1 - patient.progress / 100)} strokeLinecap="round" className="text-blue-600 transition-all duration-1000 ease-out" />
              </svg>
-             <span className="absolute text-3xl font-black text-slate-800 tracking-tighter">{patient.progress}%</span>
+             <span className="absolute text-2xl font-black text-slate-800 tracking-tighter">{patient.progress}%</span>
           </div>
-          <div className="flex-1 space-y-2">
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none">Recuperación</p>
+          <div className="flex-1 space-y-1">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Recuperación</p>
             <p className="text-lg font-black text-slate-700 leading-tight">Fase: {patient.progress > 70 ? 'Readaptación' : 'Consolidación'}</p>
-            <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
-              <TrendingUp size={14} /> 
-              <span>Progreso Óptimo</span>
-            </div>
           </div>
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="flex gap-2 border-b border-slate-200 pb-px overflow-x-auto no-scrollbar">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-6 py-4 font-bold text-sm transition-all whitespace-nowrap ${activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/30 rounded-t-xl' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-t-xl'}`}><Icon className="w-4 h-4" /> {tab.label}</button>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-6 py-4 font-bold text-sm transition-all whitespace-nowrap ${activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/30 rounded-t-xl' : 'text-slate-400 hover:text-slate-600'}`}><Icon className="w-4 h-4" /> {tab.label}</button>
           );
         })}
       </div>
 
+      {/* Contenido */}
       <div className="min-h-[500px]">
         {activeTab === 'summary' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
             <div className="lg:col-span-2 space-y-6">
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 border-l-8 border-l-emerald-500 relative group">
-                  <button onClick={() => setIsEditingData(true)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-400 hover:text-emerald-600"><Edit2 size={14}/></button>
-                  <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
-                    <CalendarDays size={28} />
-                  </div>
-                  <div>
-                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha de Ingreso</h5>
-                    <p className="text-lg font-black text-slate-800">
-                      {new Date(patient.admissionDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 border-l-8 border-l-indigo-500 relative group">
-                  <button onClick={() => setIsEditingData(true)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-400 hover:text-indigo-600"><Edit2 size={14}/></button>
-                  <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
-                    <TrendingUp size={28} />
-                  </div>
-                  <div>
-                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Respuesta al Tratamiento</h5>
-                    <p className="text-sm font-bold text-slate-700 leading-tight">
-                      {patient.treatmentResponse || 'Pendiente de evaluación clínica inicial.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col border-l-8 border-l-blue-600 relative group">
-                <button onClick={() => setIsEditingData(true)} className="absolute top-4 right-20 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-400 hover:text-blue-600 z-20"><Edit2 size={16}/></button>
-                <div className="bg-blue-50/50 p-4 border-b border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-600 text-white rounded-lg"><BookOpen size={16} /></div>
-                    <h4 className="font-bold text-slate-800 text-sm">Historia del Padecimiento Actual</h4>
-                  </div>
-                  <button onClick={openScholarSearch} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm relative z-10">
-                    <GraduationCap size={14} /> Evidencia Scholar
-                  </button>
-                </div>
-                <div className="p-8">
-                  <p className="text-slate-700 leading-relaxed text-sm font-medium">{patient.illnessHistory}</p>
-                </div>
-              </div>
-
-              <div className="bg-amber-50/30 rounded-[2.5rem] border border-amber-100 shadow-sm overflow-hidden flex flex-col border-l-8 border-l-amber-500 relative group">
-                <button onClick={() => setIsEditingData(true)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-400 hover:text-amber-600"><Edit2 size={16}/></button>
-                <div className="bg-amber-50 p-4 border-b border-amber-100 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-600 text-white rounded-lg"><ClipboardList size={16} /></div>
-                    <h4 className="font-bold text-amber-900 text-sm">Antecedentes Médicos y Farmacológicos</h4>
-                  </div>
-                </div>
-                <div className="p-8 space-y-6">
-                  <div>
-                    <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-1"><Info size={12} /> Otros Diagnósticos / Comorbilidades</h5>
-                    <p className="text-slate-700 text-sm font-medium leading-relaxed">
-                      {patient.medicalHistory || 'No se han registrado comorbilidades relevantes.'}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-amber-100/50">
-                    <div>
-                      <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-1"><Pill size={12} /> Medicación / Tratamiento Actual</h5>
-                      <p className="text-slate-700 text-sm italic">
-                        {patient.otherTreatments || 'Sin medicación reportada.'}
-                      </p>
-                    </div>
-                    <div>
-                      <h5 className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-2 flex items-center gap-1"><ShieldAlert size={12} /> Interacciones y Riesgos</h5>
-                      <p className="text-red-900 text-sm font-bold bg-red-50 p-3 rounded-xl border border-red-100">
-                        {patient.drugInteractions || 'No se han detectado riesgos farmacológicos específicos.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[2.5rem] flex items-start gap-4 shadow-sm group relative">
-                <button onClick={() => setIsEditingData(true)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-red-400 hover:text-red-600"><Edit2 size={14}/></button>
-                <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 shrink-0"><ShieldAlert size={24} /></div>
-                <div className="flex-1 space-y-1">
-                  <h4 className="text-[10px] font-black text-red-600 uppercase tracking-widest">Alertas de Seguridad</h4>
-                  <p className="text-sm font-bold text-red-900 leading-relaxed">{patient.warningSigns || 'Sin señales de alarma específicas.'}</p>
-                </div>
-              </div>
-
+              {/* Nueva Cuadrícula de Signos Vitales Ampliada */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <VitalCard icon={<Heart className="text-red-500" />} label="FC" value={`${patient.vitalSigns.heartRate} lpm`} />
-                <VitalCard icon={<Activity className="text-blue-500" />} label="TA" value={patient.vitalSigns.bloodPressure} />
-                <VitalCard icon={<Wind className="text-cyan-500" />} label="SatO2" value={`${patient.vitalSigns.oxygenSaturation}%`} />
-                <VitalCard icon={<Thermometer className="text-orange-500" />} label="Temp" value={`${patient.vitalSigns.temperature}ºC`} />
+                <VitalDisplayCard icon={<Heart className="text-red-500" />} label="Frec. Cardíaca" value={patient.vitalSigns.heartRate} unit="lpm" />
+                <VitalDisplayCard icon={<TrendingUp className="text-blue-500" />} label="Frec. Resp" value={patient.vitalSigns.respiratoryRate} unit="rpm" />
+                <VitalDisplayCard icon={<Activity className="text-emerald-500" />} label="Tensión Art." value={patient.vitalSigns.bloodPressure} unit="" />
+                <VitalDisplayCard icon={<Wind className="text-cyan-500" />} label="SatO2" value={patient.vitalSigns.oxygenSaturation} unit="%" />
+                <VitalDisplayCard icon={<Thermometer className="text-orange-500" />} label="Temperatura" value={patient.vitalSigns.temperature} unit="ºC" />
+                <VitalDisplayCard icon={<Scale className="text-slate-500" />} label="Peso" value={patient.vitalSigns.weight} unit="kg" />
+                <VitalDisplayCard icon={<Ruler className="text-slate-500" />} label="Talla" value={patient.vitalSigns.height} unit="cm" />
+                <VitalDisplayCard icon={<BMI className={getBMIColor(patient.vitalSigns.bmi)} />} label="IMC (BMI)" value={patient.vitalSigns.bmi.toFixed(1)} unit="" />
+              </div>
+
+              <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden border-l-8 border-l-blue-600 p-8 space-y-4">
+                 <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-600 text-white rounded-lg"><BookOpen size={16} /></div>
+                    <h4 className="font-bold text-slate-800 text-sm">Historia y Diagnóstico</h4>
+                 </div>
+                 <p className="text-slate-700 leading-relaxed text-sm font-medium">{patient.illnessHistory}</p>
+                 <div className="pt-4 border-t border-slate-50 flex items-center gap-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Actividad Usual:</span>
+                    <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs font-bold text-slate-600">{patient.physicalActivityLevel}</span>
+                 </div>
               </div>
             </div>
 
             <div className="space-y-6">
-              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden group">
-                <div className="flex items-center gap-3 mb-6 relative z-10"><Sparkles className="w-6 h-6 text-yellow-300" /><h4 className="font-bold text-lg">Asistente Clínico IA</h4></div>
-                <p className="text-blue-50 text-sm italic mb-8 leading-relaxed relative z-10">"Basado en la última evolución, el paciente está listo para aumentar la carga en sentadillas."</p>
-                <button onClick={() => setIsAnalyzing(true)} className="w-full bg-white text-blue-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg">Analizar Hallazgos</button>
+              <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden group">
+                <div className="flex items-center gap-3 mb-6 relative z-10"><Sparkles className="w-6 h-6 text-yellow-300" /><h4 className="font-bold text-lg">Asistente IA</h4></div>
+                <p className="text-blue-50 text-sm italic mb-8 leading-relaxed relative z-10">"Sugerencia: Dado el IMC de {patient.vitalSigns.bmi.toFixed(1)}, considere ejercicios de bajo impacto para proteger las articulaciones de carga."</p>
+                <button onClick={() => setIsAnalyzing(true)} className="w-full bg-white text-indigo-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg">Abrir Razonamiento Clínico</button>
               </div>
+            </div>
+          </div>
+        )}
 
-              <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
-                <h4 className="font-bold text-slate-800 flex items-center gap-2"><TrendingUp size={18} className="text-blue-500" /> Logística</h4>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-sm"><span className="text-slate-500">Última Sesión</span><span className="font-bold text-slate-700">{patient.lastSession}</span></div>
-                  <div className="flex justify-between items-center text-sm"><span className="text-slate-500">Derivación</span><span className="font-bold text-slate-700">{patient.referralSource}</span></div>
+        {activeTab === 'exam' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
+             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+                <div className="flex items-center gap-3 text-blue-600 mb-2">
+                  <Eye className="w-6 h-6" />
+                  <h4 className="font-black text-lg text-slate-800">Inspección Visual</h4>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'notes' && (
-          <div className="space-y-6 animate-in fade-in">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold text-slate-800">Historial de Evolución</h3>
-              <button onClick={() => handleAddNoteClick('Evolución')} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-100">
-                <Plus size={16} /> Nueva Nota
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {patient.notes.filter(n => n.type === 'Evolución').length > 0 ? (
-                patient.notes.filter(n => n.type === 'Evolución').map((note) => (
-                  <div key={note.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><Clock size={16} /></div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-800">{note.date}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Por: {note.author}</p>
-                        </div>
-                      </div>
-                      <div className="bg-red-50 px-3 py-1 rounded-full text-[10px] font-black text-red-600 uppercase">Dolor: {note.painLevel}/10</div>
-                    </div>
-                    <p className="text-sm text-slate-700 leading-relaxed font-medium">{note.content}</p>
-                    {note.vitalSigns && (
-                      <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-50">
-                        <div className="text-center"><p className="text-[8px] font-black text-slate-400 uppercase">FC</p><p className="text-xs font-bold text-slate-700">{note.vitalSigns.heartRate}</p></div>
-                        <div className="text-center"><p className="text-[8px] font-black text-slate-400 uppercase">TA</p><p className="text-xs font-bold text-slate-700">{note.vitalSigns.bloodPressure}</p></div>
-                        <div className="text-center"><p className="text-[8px] font-black text-slate-400 uppercase">SatO2</p><p className="text-xs font-bold text-slate-700">{note.vitalSigns.oxygenSaturation}%</p></div>
-                        <div className="text-center"><p className="text-[8px] font-black text-slate-400 uppercase">Temp</p><p className="text-xs font-bold text-slate-700">{note.vitalSigns.temperature}º</p></div>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="py-20 text-center text-slate-400 italic bg-white rounded-[2rem] border border-slate-100 border-dashed">No hay notas de evolución registradas aún.</div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'exercises' && (
-          <div className="space-y-6 animate-in fade-in">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold text-slate-800">Anotaciones del Plan de Trabajo</h3>
-              <button onClick={() => handleAddNoteClick('Plan de Trabajo')} className="bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-green-100">
-                <Plus size={16} /> Nueva Anotación
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ejercicios Asignados</h4>
-                {patient.assignedExercises.map(ex => (
-                  <div 
-                    key={ex.id} 
-                    onClick={() => setSelectedExerciseDetail(ex)}
-                    className="bg-white p-5 rounded-3xl border border-slate-100 flex items-center justify-between group hover:bg-blue-50 transition-all cursor-pointer hover:border-blue-200"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black transition-transform group-hover:scale-110">
-                        {getExerciseIcon(ex.category)}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-800 text-sm">{ex.title}</p>
-                        <p className="text-xs text-slate-400">{ex.reps}</p>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-600" />
-                  </div>
-                ))}
-                {patient.assignedExercises.length === 0 && (
-                  <div className="p-10 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] text-center text-slate-400 italic text-sm">Sin ejercicios asignados.</div>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Notas de Progresión de Plan</h4>
-                {patient.notes.filter(n => n.type === 'Plan de Trabajo').length > 0 ? (
-                  patient.notes.filter(n => n.type === 'Plan de Trabajo').map(note => (
-                    <div key={note.id} className="bg-green-50/50 p-5 rounded-3xl border border-green-100 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-green-700 uppercase tracking-widest">{note.date}</span>
-                        <div className="p-1 bg-white rounded-lg text-green-600 shadow-sm"><ClipboardList size={12} /></div>
-                      </div>
-                      <p className="text-sm text-green-900 font-medium leading-relaxed italic">"{note.content}"</p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-10 text-center text-slate-400 text-xs italic border border-dashed border-slate-200 rounded-3xl">No hay anotaciones específicas para el plan.</div>
-                )}
-              </div>
-            </div>
+                <p className="text-slate-600 text-sm font-medium leading-relaxed bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                  {patient.physicalExam?.visualInspection || "No se han registrado datos."}
+                </p>
+                <div className="flex items-center gap-3 text-emerald-600 pt-4">
+                  <Fingerprint className="w-6 h-6" />
+                  <h4 className="font-black text-lg text-slate-800">Palpación Clínica</h4>
+                </div>
+                <p className="text-slate-600 text-sm font-medium leading-relaxed bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                  {patient.physicalExam?.palpation || "No se han registrado datos."}
+                </p>
+             </div>
+             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+                <div className="flex items-center gap-3 text-indigo-600 mb-2">
+                  <Compass className="w-6 h-6" />
+                  <h4 className="font-black text-lg text-slate-800">Goniometría</h4>
+                </div>
+                <div className="space-y-3 overflow-hidden rounded-3xl border border-slate-100">
+                   <div className="bg-slate-50 px-5 py-3 grid grid-cols-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
+                      <span>Artic.</span><span>Mov.</span><span className="text-center">Activo</span><span className="text-center">Pasivo</span>
+                   </div>
+                   {patient.physicalExam?.goniometry.map((g, i) => (
+                     <div key={i} className="px-5 py-4 grid grid-cols-4 text-xs font-bold text-slate-700 border-b last:border-0 hover:bg-slate-50/50">
+                        <span>{g.joint}</span><span className="text-slate-500">{g.movement}</span><span className="text-center text-blue-600">{g.activeRange}º</span><span className="text-center text-emerald-600">{g.passiveRange}º</span>
+                     </div>
+                   ))}
+                </div>
+             </div>
           </div>
         )}
 
         {activeTab === 'diagnostics' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
-             {patient.diagnosticStudies.length > 0 ? (
-              patient.diagnosticStudies.map(study => (
-                <div key={study.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-start gap-4">
-                  <div className="p-3 bg-slate-50 rounded-xl">{getStudyIcon(study.type)}</div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start mb-1"><h5 className="font-bold text-slate-800">{study.title}</h5><span className="text-[10px] text-slate-400 font-bold">{study.date}</span></div>
-                    <p className="text-xs text-slate-500 italic">"{study.resultSummary}"</p>
-                  </div>
+          <div className="space-y-8 animate-in fade-in">
+             <section className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
+                <h4 className="text-lg font-bold text-slate-800 flex items-center gap-2"><FlaskConical className="text-blue-500 w-5 h-5" /> Test Ortopédicos Realizados</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                   {patient.physicalExam?.orthopedicTests.map((test) => (
+                     <div key={test.id} className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-3">
+                        <div className="flex justify-between items-start">
+                           <span className="px-3 py-1 bg-white text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest">{test.category}</span>
+                           <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${test.result === 'Positivo' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'}`}>{test.result}</span>
+                        </div>
+                        <h5 className="font-bold text-slate-800">{test.testName}</h5>
+                        <p className="text-xs text-slate-500 italic">"{test.observations || 'Sin observaciones.'}"</p>
+                     </div>
+                   ))}
                 </div>
-              ))
-            ) : (
-              <div className="col-span-2 py-20 text-center text-slate-400 italic bg-white rounded-[2rem] border border-slate-100 border-dashed">Sin estudios registrados.</div>
-            )}
+             </section>
           </div>
         )}
       </div>
@@ -658,48 +378,11 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   );
 };
 
-// Componentes internos para edición
-const EditField = ({ label, value, onChange, type = "text" }: { label: string, value: string, onChange: (v: string) => void, type?: string }) => (
-  <div className="space-y-2">
-    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
-    <input 
-      type={type} 
-      value={value} 
-      onChange={e => onChange(e.target.value)} 
-      className="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none font-bold text-slate-700"
-    />
-  </div>
-);
-
-const EditArea = ({ label, value, onChange, rows = 3 }: { label: string, value: string, onChange: (v: string) => void, rows?: number }) => (
-  <div className="space-y-2">
-    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
-    <textarea 
-      rows={rows}
-      value={value} 
-      onChange={e => onChange(e.target.value)} 
-      className="w-full p-5 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none font-medium text-slate-700"
-    />
-  </div>
-);
-
-const VitalCard = ({ icon, label, value }: any) => (
-  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
+const VitalDisplayCard = ({ icon, label, value, unit }: any) => (
+  <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center space-y-1">
     <div className="flex justify-center mb-1">{icon}</div>
     <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{label}</p>
-    <p className="text-sm font-bold text-slate-800">{value}</p>
-  </div>
-);
-
-const VitalInput = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => (
-  <div className="space-y-1">
-    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
-    <input 
-      type="text" 
-      value={value} 
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 focus:ring-1 focus:ring-blue-500 outline-none text-xs font-bold text-slate-700"
-    />
+    <p className="text-lg font-black text-slate-800">{value} <span className="text-[10px] text-slate-400 opacity-60">{unit}</span></p>
   </div>
 );
 

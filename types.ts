@@ -13,9 +13,35 @@ export interface PhysioUser {
 
 export interface VitalSigns {
   heartRate: number;
+  respiratoryRate: number;
   bloodPressure: string;
   oxygenSaturation: number;
   temperature: number;
+  weight: number; // kg
+  height: number; // cm
+  bmi: number;
+}
+
+export interface GoniometryRecord {
+  joint: string;
+  movement: string;
+  activeRange: string;
+  passiveRange: string;
+}
+
+export interface OrthopedicTestResult {
+  id: string;
+  category: string;
+  testName: string;
+  result: 'Positivo' | 'Negativo' | 'Dudoso';
+  observations: string;
+}
+
+export interface PhysicalExamination {
+  visualInspection: string;
+  palpation: string;
+  goniometry: GoniometryRecord[];
+  orthopedicTests: OrthopedicTestResult[];
 }
 
 export type DiagnosticType = 'Sanguínea' | 'Radiología' | 'Neuroconducción' | 'Imagen Avanzada' | 'Otros';
@@ -52,29 +78,42 @@ export interface ClinicalNote {
   content: string;
   painLevel: number; // 1-10
   author: string;
-  vitalSigns?: VitalSigns; // Captura de constantes en el momento de la nota
+  vitalSigns?: VitalSigns; 
   type: 'Evolución' | 'Plan de Trabajo' | 'General';
 }
+
+export interface Appointment {
+  id: string;
+  patientId: string;
+  patientName: string;
+  date: string;
+  time: string;
+  type: 'Tratamiento' | 'Revisión' | 'Evaluación' | 'Domicilio';
+}
+
+export type ActivityLevel = 'Sedentario' | 'Leve' | 'Moderado' | 'Activo' | 'Muy Activo';
 
 export interface PatientInfo {
   id: string;
   name: string;
   age: number;
-  idNumber: string; // DNI
+  idNumber: string; 
   email: string;
   phone: string;
   condition: string;
   diagnosis: string;
-  admissionDate: string; // Fecha de ingreso al programa
-  treatmentResponse: string; // Resumen de respuesta al tratamiento
-  illnessHistory: string; // Historia detallada del padecimiento
+  admissionDate: string; 
+  treatmentResponse: string; 
+  illnessHistory: string; 
   treatmentReceived: string;
-  treatmentReason: string; // Justificación del tratamiento
-  warningSigns: string;    // Señales de alarma
-  medicalHistory: string;  // Comorbilidades / Otros diagnósticos
-  otherTreatments: string; // Medicación y tratamientos externos
+  treatmentReason: string; 
+  warningSigns: string;    
+  medicalHistory: string;  
+  otherTreatments: string; 
   clinicalFindings: string;
-  drugInteractions: string; // Posibles interacciones
+  physicalActivityLevel: ActivityLevel;
+  physicalExam: PhysicalExamination; 
+  drugInteractions: string; 
   referralSource: string;
   patientType: 'Intrahospitalario' | 'Ambulatorio';
   ambulationType: string;
