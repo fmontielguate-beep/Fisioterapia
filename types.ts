@@ -7,6 +7,8 @@ export interface PhysioUser {
   professionalId: string; // Nº de Colegiado o DNI
   specialty: string;
   password?: string;
+  securityQuestion?: string;
+  securityAnswer?: string;
 }
 
 export interface VitalSigns {

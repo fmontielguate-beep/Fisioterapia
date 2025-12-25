@@ -32,9 +32,12 @@ import {
   X,
   Clock,
   User,
-  CalendarDays
+  CalendarDays,
+  Dumbbell,
+  StretchHorizontal,
+  InfoIcon
 } from 'lucide-react';
-import { PatientInfo, DiagnosticType, ClinicalNote, VitalSigns } from '../types';
+import { PatientInfo, DiagnosticType, ClinicalNote, VitalSigns, Exercise } from '../types';
 
 interface ClinicalRecordProps {
   patient: PatientInfo;
@@ -47,6 +50,7 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   const [activeTab, setActiveTab] = useState<'summary' | 'notes' | 'exercises' | 'diagnostics'>('summary');
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [noteType, setNoteType] = useState<'Evolución' | 'Plan de Trabajo'>('Evolución');
+  const [selectedExerciseDetail, setSelectedExerciseDetail] = useState<Exercise | null>(null);
   
   const getCurrentDateTimeLocal = () => {
     const now = new Date();
@@ -116,6 +120,15 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
     setActiveTab(noteType === 'Evolución' ? 'notes' : 'exercises');
   };
 
+  const getExerciseIcon = (category: string) => {
+    switch(category) {
+      case 'Fuerza': return <Dumbbell className="w-6 h-6" />;
+      case 'Estiramiento': return <StretchHorizontal className="w-6 h-6" />;
+      case 'Movilidad': return <Move className="w-6 h-6" />;
+      default: return <Activity className="w-6 h-6" />;
+    }
+  };
+
   const getStudyIcon = (type: DiagnosticType) => {
     switch(type) {
       case 'Sanguínea': return <Beaker className="w-5 h-5 text-red-500" />;
@@ -134,6 +147,32 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-20 relative">
       
+      {/* Modal Detalle Ejercicio */}
+      {selectedExerciseDetail && (
+        <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+             <div className="h-40 bg-slate-100 flex items-center justify-center relative">
+                <div className="p-6 bg-blue-600 text-white rounded-3xl shadow-xl">
+                  {getExerciseIcon(selectedExerciseDetail.category)}
+                </div>
+                <button onClick={() => setSelectedExerciseDetail(null)} className="absolute top-4 right-4 p-2 bg-white/80 rounded-full text-slate-500 hover:text-red-500"><X size={20}/></button>
+             </div>
+             <div className="p-8 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-2xl font-black text-slate-800">{selectedExerciseDetail.title}</h3>
+                  <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest">{selectedExerciseDetail.category}</span>
+                </div>
+                <p className="text-slate-600 font-medium leading-relaxed">{selectedExerciseDetail.description}</p>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-blue-500" />
+                  <span className="text-sm font-bold text-slate-700">Dosis: {selectedExerciseDetail.reps}</span>
+                </div>
+                <button onClick={() => setSelectedExerciseDetail(null)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-widest text-xs mt-4">Entendido</button>
+             </div>
+          </div>
+        </div>
+      )}
+
       {isAddingNote && (
         <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
@@ -251,17 +290,31 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
           </div>
         </div>
 
-        <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 flex items-center gap-6 min-w-[320px] z-10">
-          <div className="relative w-16 h-16 flex items-center justify-center shrink-0">
-             <svg className="w-full h-full -rotate-90">
-               <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-slate-200" />
-               <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray={175.8} strokeDashoffset={175.8 * (1 - patient.progress / 100)} className="text-blue-600 transition-all duration-500 ease-out" />
+        {/* Círculo de progreso mejorado: viewBox añadido para evitar clipping */}
+        <div className="bg-slate-50 p-8 rounded-[3rem] border border-slate-100 flex items-center gap-8 min-w-[380px] z-10 shadow-inner">
+          <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
+             <svg className="w-full h-full -rotate-90 drop-shadow-md" viewBox="0 0 112 112">
+               <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-200" />
+               <circle 
+                cx="56" cy="56" r="48" 
+                stroke="currentColor" 
+                strokeWidth="10" 
+                fill="transparent" 
+                strokeDasharray={301.6} 
+                strokeDashoffset={301.6 * (1 - patient.progress / 100)} 
+                strokeLinecap="round"
+                className="text-blue-600 transition-all duration-700 ease-out" 
+               />
              </svg>
-             <span className="absolute text-sm font-black text-slate-800">{patient.progress}%</span>
+             <span className="absolute text-2xl font-black text-slate-800 tracking-tighter">{patient.progress}%</span>
           </div>
-          <div className="flex-1 space-y-1">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recuperación</p>
-            <p className="text-sm font-bold text-slate-700">Fase Actual: {patient.progress > 70 ? 'Readaptación' : 'Consolidación'}</p>
+          <div className="flex-1 space-y-2">
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none">Recuperación</p>
+            <p className="text-lg font-black text-slate-700 leading-tight">Fase: {patient.progress > 70 ? 'Readaptación' : 'Consolidación'}</p>
+            <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
+              <TrendingUp size={14} /> 
+              <span>Progreso Óptimo</span>
+            </div>
           </div>
         </div>
       </div>
@@ -280,7 +333,6 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
             <div className="lg:col-span-2 space-y-6">
               
-              {/* Evolución rápida: Fecha Ingreso y Respuesta */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 border-l-8 border-l-emerald-500">
                   <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
@@ -440,17 +492,26 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
               <div className="space-y-4">
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ejercicios Asignados</h4>
                 {patient.assignedExercises.map(ex => (
-                  <div key={ex.id} className="bg-white p-5 rounded-3xl border border-slate-100 flex items-center justify-between">
+                  <div 
+                    key={ex.id} 
+                    onClick={() => setSelectedExerciseDetail(ex)}
+                    className="bg-white p-5 rounded-3xl border border-slate-100 flex items-center justify-between group hover:bg-blue-50 transition-all cursor-pointer hover:border-blue-200"
+                  >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black">?</div>
+                      <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black transition-transform group-hover:scale-110">
+                        {getExerciseIcon(ex.category)}
+                      </div>
                       <div>
                         <p className="font-bold text-slate-800 text-sm">{ex.title}</p>
                         <p className="text-xs text-slate-400">{ex.reps}</p>
                       </div>
                     </div>
-                    <ChevronRight size={16} className="text-slate-300" />
+                    <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-600" />
                   </div>
                 ))}
+                {patient.assignedExercises.length === 0 && (
+                  <div className="p-10 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] text-center text-slate-400 italic text-sm">Sin ejercicios asignados.</div>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -513,6 +574,11 @@ const VitalInput = ({ label, value, onChange }: { label: string, value: string, 
       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 focus:ring-1 focus:ring-blue-500 outline-none text-xs font-bold text-slate-700"
     />
   </div>
+);
+
+// Move redefinition (Internal proxy for Move icon)
+const Move: React.FC<any> = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
 );
 
 export default ClinicalRecord;

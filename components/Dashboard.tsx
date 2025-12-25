@@ -108,17 +108,28 @@ const Dashboard: React.FC<DashboardProps> = ({ setView, patient }) => {
           <p className="text-slate-500 mt-2 text-lg">Tu recuperación está en marcha. Sigue así.</p>
         </div>
         
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-50 flex items-center gap-6 min-w-[280px]">
-          <div className="relative w-16 h-16 flex items-center justify-center">
-             <svg className="w-full h-full -rotate-90">
-               <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-slate-100" />
-               <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray={175.8} strokeDashoffset={175.8 * (1 - patient.progress / 100)} className="text-green-500 transition-all duration-1000" />
+        {/* Anillo de progreso con viewBox para evitar clipping */}
+        <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-100 flex items-center gap-8 min-w-[340px]">
+          <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
+             <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
+               <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100" />
+               <circle 
+                cx="48" cy="48" r="40" 
+                stroke="currentColor" 
+                strokeWidth="10" 
+                fill="transparent" 
+                strokeDasharray={251.2} 
+                strokeDashoffset={251.2 * (1 - patient.progress / 100)} 
+                strokeLinecap="round"
+                className="text-emerald-500 transition-all duration-1000 ease-in-out" 
+               />
              </svg>
-             <span className="absolute text-sm font-bold text-slate-700">{patient.progress}%</span>
+             <span className="absolute text-xl font-black text-slate-800 tracking-tighter">{patient.progress}%</span>
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tu Progreso</p>
-            <p className="text-lg font-bold text-slate-700 leading-tight">Fase de Estabilización</p>
+          <div className="flex-1">
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 leading-none">Tu Progreso</p>
+            <p className="text-xl font-black text-slate-700 leading-tight">Fase de Estabilización</p>
+            <p className="text-[10px] text-emerald-600 font-bold mt-2 uppercase">¡Casi a la mitad!</p>
           </div>
         </div>
       </header>
