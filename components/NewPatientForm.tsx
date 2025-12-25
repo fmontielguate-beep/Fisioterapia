@@ -19,7 +19,9 @@ import {
   Pill,
   GraduationCap,
   CalendarDays,
-  TrendingUp
+  TrendingUp,
+  MapPin,
+  FileSearch
 } from 'lucide-react';
 import { PatientInfo, DiagnosticStudy, DiagnosticType } from '../types';
 
@@ -155,11 +157,14 @@ const NewPatientForm: React.FC<NewPatientFormProps> = ({ onSave, onCancel }) => 
 
       <form id="patient-form" onSubmit={handleSubmit} className="space-y-8">
         <section className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl space-y-6">
-          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><User className="w-5 h-5 text-blue-500" /> Identificación</h3>
+          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><User className="w-5 h-5 text-blue-500" /> Identificación y Logística</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FormInput label="Nombre Completo" value={formData.name} onChange={(v: string) => setFormData({...formData, name: v})} required />
             <FormInput label="DNI / Pasaporte" value={formData.idNumber} onChange={(v: string) => setFormData({...formData, idNumber: v})} required />
             <FormInput label="Edad" value={formData.age} onChange={(v: string) => setFormData({...formData, age: v})} type="number" required />
+          </div>
+          <div className="pt-4 border-t border-slate-50">
+            <FormTextArea label="Fuente de Derivación" value={formData.referralSource} onChange={(v: string) => setFormData({...formData, referralSource: v})} placeholder="Médico remitente, centro de salud, mutua o derivación externa..." rows={2} />
           </div>
         </section>
 
@@ -169,6 +174,14 @@ const NewPatientForm: React.FC<NewPatientFormProps> = ({ onSave, onCancel }) => 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormInput label="Fecha de Ingreso al Programa" type="date" value={formData.admissionDate} onChange={(v: string) => setFormData({...formData, admissionDate: v})} required />
             <FormInput label="Respuesta Esperada / Inicial" value={formData.treatmentResponse} onChange={(v: string) => setFormData({...formData, treatmentResponse: v})} placeholder="Ej: Favorable, con cautela, etc." />
+          </div>
+        </section>
+
+        <section className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl space-y-6 border-l-8 border-l-blue-600">
+          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><FileSearch className="w-5 h-5 text-blue-600" /> Plan y Justificación Clínica</h3>
+          <div className="grid grid-cols-1 gap-6">
+            <FormTextArea label="Tratamiento Recibido Previamente" value={formData.treatmentReceived} onChange={(v: string) => setFormData({...formData, treatmentReceived: v})} placeholder="Intervenciones previas, cirugías, sesiones de fisio anteriores..." rows={3} />
+            <FormTextArea label="Justificación / Motivo del Tratamiento Actual" value={formData.treatmentReason} onChange={(v: string) => setFormData({...formData, treatmentReason: v})} placeholder="Objetivos principales y necesidad de la intervención actual..." rows={3} />
           </div>
         </section>
 
@@ -183,9 +196,9 @@ const NewPatientForm: React.FC<NewPatientFormProps> = ({ onSave, onCancel }) => 
           </div>
         </section>
 
-        <section className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl space-y-6 border-l-8 border-l-blue-600">
+        <section className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl space-y-6 border-l-8 border-l-indigo-600">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><BookOpen className="w-5 h-5 text-blue-600" /> Historia del Padecimiento</h3>
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><BookOpen className="w-5 h-5 text-indigo-600" /> Historia del Padecimiento</h3>
             <button 
               type="button" 
               onClick={handleScholarSearch}
@@ -204,6 +217,11 @@ const NewPatientForm: React.FC<NewPatientFormProps> = ({ onSave, onCancel }) => 
             <FormTextArea label="Diagnóstico Médico Principal" value={formData.diagnosis} onChange={(v: string) => setFormData({...formData, diagnosis: v})} />
             <FormTextArea label="Hallazgos Exploración" value={formData.clinicalFindings} onChange={(v: string) => setFormData({...formData, clinicalFindings: v})} />
           </div>
+        </section>
+
+        <section className="bg-red-50 rounded-[2.5rem] p-8 border-2 border-red-100 shadow-xl space-y-6">
+           <h3 className="text-lg font-bold text-red-800 flex items-center gap-2"><ShieldAlert className="w-5 h-5" /> Seguridad</h3>
+           <FormTextArea label="Señales de Alarma (Red Flags)" value={formData.warningSigns} onChange={(v: string) => setFormData({...formData, warningSigns: v})} placeholder="Pérdida de fuerza súbita, fiebre, dolor nocturno insoportable..." />
         </section>
       </form>
     </div>
