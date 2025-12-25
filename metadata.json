@@ -1,0 +1,7 @@
+{
+  "name": "FisioSevilla Digital",
+  "description": "Aplicación de e-rehabilitación para clínicas de fisioterapia en Sevilla, con IA de feedback en tiempo real, biblioteca de ejercicios y seguimiento de pacientes.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

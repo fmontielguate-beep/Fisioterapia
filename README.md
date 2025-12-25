@@ -1,11 +1,55 @@
-<div align="center">
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+# FisioSevilla Digital v2.5.0-EBP
 
-  <h1>Built with AI Studio</h2>
+Plataforma avanzada de e-rehabilitación clínica para fisioterapia, integrando **Gemini AI** para feedback biomecánico y gestión de Historias Clínicas Electrónicas (HCE).
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## 🚀 Instalación Local
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+1. **Clonar el repositorio**:
+   ```bash
+   git clone https://github.com/tu-usuario/fisio-sevilla-digital.git
+   cd fisio-sevilla-digital
+   ```
 
-</div>
+2. **Instalar dependencias**:
+   ```bash
+   npm install
+   ```
+
+3. **Configurar API KEY**:
+   Crea un archivo `.env` en la raíz y añade tu clave de [Google AI Studio](https://aistudio.google.com/):
+   ```env
+   VITE_GEMINI_API_KEY=tu_clave_aqui
+   ```
+
+4. **Ejecutar**:
+   ```bash
+   npm run dev
+   ```
+
+## 📤 Cómo subir cambios a GitHub
+
+Si el sistema te pregunta qué cambios has hecho, sigue estos pasos en tu terminal:
+
+1. **Preparar archivos**: 
+   `git add .`
+2. **Crear el punto de guardado (Commit)**: 
+   `git commit -m "feat: asistente global, HCE y versionado v2.5.0"`
+3. **Subir a la nube**: 
+   `git push origin main`
+
+> **Nota para el Commit**: El mensaje de commit es obligatorio en Git para mantener un historial clínico del desarrollo del software.
+
+## 🛠️ Tecnologías
+- **React 19** + TypeScript.
+- **Tailwind CSS** para el diseño clínico.
+- **Gemini API** (gemini-3-flash-preview) para el motor de razonamiento.
+- **Lucide React** para iconografía médica.
+
+## 🔒 Seguridad y Privacidad
+- **RGPD Ready**: Consentimiento informado integrado.
+- **Almacenamiento Local**: Los datos de los pacientes residen en el `localStorage` del navegador del profesional, no se envían a servidores externos (excepto los datos biométricos anónimos procesados por la IA en tiempo real).
+- **Entorno Certificado**: Diseñado para cumplir con los estándares de seguridad de datos de salud en España.
+
+---
+*Desarrollado para la modernización de la fisioterapia en Sevilla.*
