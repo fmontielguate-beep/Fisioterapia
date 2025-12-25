@@ -63,6 +63,8 @@ export interface PatientInfo {
   phone: string;
   condition: string;
   diagnosis: string;
+  admissionDate: string; // Fecha de ingreso al programa
+  treatmentResponse: string; // Resumen de respuesta al tratamiento
   illnessHistory: string; // Historia detallada del padecimiento
   treatmentReceived: string;
   treatmentReason: string; // Justificación del tratamiento

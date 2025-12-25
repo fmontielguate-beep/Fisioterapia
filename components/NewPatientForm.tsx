@@ -17,7 +17,9 @@ import {
   BookOpen,
   ClipboardList,
   Pill,
-  GraduationCap
+  GraduationCap,
+  CalendarDays,
+  TrendingUp
 } from 'lucide-react';
 import { PatientInfo, DiagnosticStudy, DiagnosticType } from '../types';
 
@@ -62,6 +64,8 @@ const NewPatientForm: React.FC<NewPatientFormProps> = ({ onSave, onCancel }) => 
     phone: '',
     condition: '',
     diagnosis: '',
+    admissionDate: new Date().toISOString().split('T')[0], // Hoy por defecto
+    treatmentResponse: '',
     illnessHistory: '',
     treatmentReceived: '',
     treatmentReason: '',
@@ -102,6 +106,8 @@ const NewPatientForm: React.FC<NewPatientFormProps> = ({ onSave, onCancel }) => 
       phone: formData.phone,
       condition: formData.condition,
       diagnosis: formData.diagnosis,
+      admissionDate: formData.admissionDate,
+      treatmentResponse: formData.treatmentResponse,
       illnessHistory: formData.illnessHistory,
       treatmentReceived: formData.treatmentReceived,
       treatmentReason: formData.treatmentReason,
@@ -154,6 +160,15 @@ const NewPatientForm: React.FC<NewPatientFormProps> = ({ onSave, onCancel }) => 
             <FormInput label="Nombre Completo" value={formData.name} onChange={(v: string) => setFormData({...formData, name: v})} required />
             <FormInput label="DNI / Pasaporte" value={formData.idNumber} onChange={(v: string) => setFormData({...formData, idNumber: v})} required />
             <FormInput label="Edad" value={formData.age} onChange={(v: string) => setFormData({...formData, age: v})} type="number" required />
+          </div>
+        </section>
+
+        {/* Evolución Inicial */}
+        <section className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl space-y-6 border-l-8 border-l-emerald-500">
+          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><TrendingUp className="w-5 h-5 text-emerald-600" /> Seguimiento Inicial</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormInput label="Fecha de Ingreso al Programa" type="date" value={formData.admissionDate} onChange={(v: string) => setFormData({...formData, admissionDate: v})} required />
+            <FormInput label="Respuesta Esperada / Inicial" value={formData.treatmentResponse} onChange={(v: string) => setFormData({...formData, treatmentResponse: v})} placeholder="Ej: Favorable, con cautela, etc." />
           </div>
         </section>
 

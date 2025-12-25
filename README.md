@@ -1,5 +1,5 @@
 
-# FisioSevilla Digital v2.5.0-EBP
+# FisioSevilla Digital v2.5.2-EBP
 
 Plataforma avanzada de e-rehabilitación clínica para fisioterapia, integrando **Gemini AI** para feedback biomecánico y gestión de Historias Clínicas Electrónicas (HCE).
 
@@ -34,11 +34,11 @@ Si el sistema te pregunta qué cambios has hecho, sigue estos pasos en tu termin
 1. **Preparar archivos**: 
    `git add .`
 2. **Crear el punto de guardado (Commit)**: 
-   `git commit -m "feat: asistente global, HCE y versionado v2.5.0"`
+   `git commit -m "feat: resúmenes de evolución y versión v2.5.2"`
 3. **Subir a la nube**: 
    `git push origin main`
 
-> **Nota para el Commit**: El mensaje de commit es obligatorio en Git para mantener un historial clínico del desarrollo del software.
+> **Mensaje de Commit sugerido**: `feat: resúmenes de evolución y versión v2.5.2`
 
 ## 🛠️ Tecnologías
 - **React 19** + TypeScript.

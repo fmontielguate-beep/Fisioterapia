@@ -15,7 +15,8 @@ import {
   X,
   ClipboardList,
   MessageSquare,
-  Newspaper
+  Newspaper,
+  CalendarDays
 } from 'lucide-react';
 import { PatientInfo, Message, NewsArticle } from '../types';
 import { getAssistantResponse } from '../services/geminiService';
@@ -122,6 +123,29 @@ const Dashboard: React.FC<DashboardProps> = ({ setView, patient }) => {
         </div>
       </header>
 
+      {/* Nuevo Resumen de Evolución para el Paciente */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-100 flex items-center gap-6 shadow-sm border-l-8 border-l-blue-500">
+          <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0">
+            <CalendarDays size={32} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Día de Inicio</p>
+            <p className="text-xl font-black text-slate-800">{new Date(patient.admissionDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p className="text-xs text-slate-500 mt-1 font-medium">Llevas {Math.floor((new Date().getTime() - new Date(patient.admissionDate).getTime()) / (1000 * 3600 * 24))} días con nosotros.</p>
+          </div>
+        </div>
+        <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-100 flex items-center gap-6 shadow-sm border-l-8 border-l-emerald-500">
+          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
+            <TrendingUp size={32} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Resumen de mi Evolución</p>
+            <p className="text-sm font-bold text-slate-700 leading-relaxed italic line-clamp-2">"{patient.treatmentResponse || 'Tu fisioterapeuta está evaluando tu respuesta inicial.'}"</p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div 
           onClick={() => setView('monitoring')}
@@ -222,7 +246,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setView, patient }) => {
         </aside>
       </div>
 
-      {/* NUEVA SECCIÓN: Noticias y Consejos */}
       <section className="space-y-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

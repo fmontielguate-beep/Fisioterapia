@@ -42,16 +42,15 @@ import { UserRole, PatientInfo, Exercise, PhysioUser } from './types';
 
 type AppEnv = 'demo' | 'final' | null;
 
-const APP_VERSION = "v2.5.0-EBP"; // Versión enfocada en Evidencia Científica
+const APP_VERSION = "v2.5.2-EBP"; 
 
 const App: React.FC = () => {
   const [env, setEnv] = useState<AppEnv>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   
-  // Auth states
   const [currentPhysio, setCurrentPhysio] = useState<PhysioUser | null>(null);
-  const [hasConsented, setHasConsented] = useState(false); // Only for patient
+  const [hasConsented, setHasConsented] = useState(false); 
   
   const demoPatients: PatientInfo[] = [
     {
@@ -63,6 +62,8 @@ const App: React.FC = () => {
       phone: '600123456',
       condition: 'Post-op Rodilla',
       diagnosis: 'Rotura de menisco interno intervenida. Plastia de LCA.',
+      admissionDate: '2023-09-10',
+      treatmentResponse: 'Evolución muy positiva. Ha recuperado el 90% del rango articular y ya realiza carga total sin dolor significativo.',
       illnessHistory: 'Paciente que sufre torsión brusca de rodilla derecha durante actividad deportiva hace 3 meses. Tras cirugía de reconstrucción LCA hace 4 semanas, inicia rehabilitación para ganar balance articular.',
       treatmentReceived: 'Cinesiterapia pasiva y magnetoterapia.',
       treatmentReason: 'Recuperación funcional tras cirugía articular compleja para restaurar estabilidad mecánica.',
@@ -92,6 +93,8 @@ const App: React.FC = () => {
       phone: '611223344',
       condition: 'Hombro Doloroso',
       diagnosis: 'Tendinopatía del supraespinoso con calcificación leve.',
+      admissionDate: '2023-10-05',
+      treatmentResponse: 'Respuesta lenta. Persiste dolor nocturno aunque ha mejorado la movilidad en abducción lateral.',
       illnessHistory: 'Dolor crónico en hombro izquierdo. Limitación funcional en actividades elevadas.',
       treatmentReceived: 'Ondas de choque y terapia manual.',
       treatmentReason: 'Reducción del dolor inflamatorio y mejora del rango articular.',
@@ -122,7 +125,6 @@ const App: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Cargar datos al iniciar
   useEffect(() => {
     const saved = localStorage.getItem('fisio_sevilla_patients');
     if (saved && env === 'final') {
@@ -135,7 +137,6 @@ const App: React.FC = () => {
     }
   }, [env]);
 
-  // Autoguardado cada vez que cambian los pacientes (solo en modo final)
   useEffect(() => {
     if (env === 'final') {
       localStorage.setItem('fisio_sevilla_patients', JSON.stringify(patients));
@@ -285,7 +286,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Branching Auth: Physio vs Patient
   if (role === 'physio' && !currentPhysio) {
     return <PhysioAuth onLogin={setCurrentPhysio} onBack={() => setRole(null)} />;
   }
@@ -324,7 +324,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Sidebar de Navegación */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-80 bg-white border-r border-slate-100 shadow-2xl transform transition-transform duration-500 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-full flex flex-col">
           <div className={`p-10 text-white rounded-br-[4rem] shadow-2xl ${env === 'demo' ? 'bg-orange-600' : (role === 'physio' ? 'bg-emerald-800' : 'bg-blue-700')}`}>
@@ -387,7 +386,6 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* Contenido Principal */}
       <main className="flex-1 overflow-y-auto relative bg-slate-50/50 h-full scroll-smooth">
         <header className={`md:hidden ${role === 'physio' ? 'bg-emerald-800' : 'bg-blue-700'} text-white p-5 flex justify-between items-center sticky top-0 z-40 shadow-xl`}>
           <div className="flex items-center gap-3">
@@ -406,7 +404,6 @@ const App: React.FC = () => {
           {renderView()}
         </div>
 
-        {/* Asistente Global Persistente */}
         {(currentPhysio || hasConsented) && (
           <GlobalAssistant role={role} user={role === 'physio' ? currentPhysio : patients[0]} />
         )}

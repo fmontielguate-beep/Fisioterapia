@@ -31,7 +31,8 @@ import {
   GraduationCap,
   X,
   Clock,
-  User
+  User,
+  CalendarDays
 } from 'lucide-react';
 import { PatientInfo, DiagnosticType, ClinicalNote, VitalSigns } from '../types';
 
@@ -47,14 +48,12 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [noteType, setNoteType] = useState<'Evolución' | 'Plan de Trabajo'>('Evolución');
   
-  // Helper to get current date in datetime-local format
   const getCurrentDateTimeLocal = () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     return now.toISOString().slice(0, 16);
   };
 
-  // Form State for new note
   const [newNote, setNewNote] = useState({
     date: getCurrentDateTimeLocal(),
     content: '',
@@ -86,7 +85,6 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
       temperature: parseFloat(newNote.temp)
     };
 
-    // Format the date for display
     const displayDate = new Date(newNote.date).toLocaleString('es-ES', {
       day: '2-digit',
       month: '2-digit',
@@ -109,7 +107,6 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
       ...patient,
       notes: [note, ...patient.notes],
       lastSession: 'Hoy',
-      // Update patient current vitals if it's an evolution note
       vitalSigns: noteType === 'Evolución' ? vitalSigns : patient.vitalSigns
     };
 
@@ -137,7 +134,6 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-20 relative">
       
-      {/* Modal para Nueva Nota / Evolución */}
       {isAddingNote && (
         <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
@@ -213,7 +209,6 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
         </div>
       )}
 
-      {/* Barra de Navegación del Paciente */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/70 backdrop-blur-lg p-4 rounded-3xl border border-white/40 sticky top-0 z-30 shadow-lg">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-all font-bold text-[10px] uppercase tracking-wider group">
@@ -236,7 +231,6 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
         </div>
       </div>
 
-      {/* Cabecera del Paciente */}
       <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl flex flex-col lg:flex-row justify-between items-stretch gap-8 relative overflow-hidden">
         <div className="flex items-center gap-6 flex-1 z-10">
           <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-4xl font-black shadow-lg">
@@ -286,7 +280,32 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
             <div className="lg:col-span-2 space-y-6">
               
-              {/* Historia del Padecimiento Actual (Fisio) */}
+              {/* Evolución rápida: Fecha Ingreso y Respuesta */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 border-l-8 border-l-emerald-500">
+                  <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
+                    <CalendarDays size={28} />
+                  </div>
+                  <div>
+                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha de Ingreso</h5>
+                    <p className="text-lg font-black text-slate-800">
+                      {new Date(patient.admissionDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 border-l-8 border-l-indigo-500">
+                  <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+                    <TrendingUp size={28} />
+                  </div>
+                  <div>
+                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Respuesta al Tratamiento</h5>
+                    <p className="text-sm font-bold text-slate-700 leading-tight">
+                      {patient.treatmentResponse || 'Pendiente de evaluación clínica inicial.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col border-l-8 border-l-blue-600">
                 <div className="bg-blue-50/50 p-4 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -302,7 +321,6 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
                 </div>
               </div>
 
-              {/* Antecedentes Médicos y Farmacológicos (Fuera de Fisio) */}
               <div className="bg-amber-50/30 rounded-[2.5rem] border border-amber-100 shadow-sm overflow-hidden flex flex-col border-l-8 border-l-amber-500">
                 <div className="bg-amber-50 p-4 border-b border-amber-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -334,7 +352,6 @@ const ClinicalRecord: React.FC<ClinicalRecordProps> = ({ patient, onBack, onMana
                 </div>
               </div>
 
-              {/* Red Flags */}
               <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[2.5rem] flex items-start gap-4 shadow-sm group">
                 <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 shrink-0"><ShieldAlert size={24} /></div>
                 <div className="flex-1 space-y-1">

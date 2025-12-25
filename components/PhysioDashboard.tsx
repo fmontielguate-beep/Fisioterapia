@@ -12,7 +12,9 @@ import {
   Calculator, 
   Calendar as CalendarIcon, 
   Save, 
-  RefreshCw 
+  RefreshCw,
+  TrendingUp,
+  CalendarDays
 } from 'lucide-react';
 import { PatientInfo } from '../types';
 import DosageCalculator from './DosageCalculator';
@@ -39,7 +41,6 @@ const PhysioDashboard: React.FC<PhysioDashboardProps> = ({ patients, onSelectPat
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700 relative pb-20">
-      {/* Modales de Herramientas */}
       {showCalculator && <DosageCalculator onClose={() => setShowCalculator(false)} />}
       {showCalendar && (
         <ClinicalCalendar 
@@ -97,7 +98,6 @@ const PhysioDashboard: React.FC<PhysioDashboardProps> = ({ patients, onSelectPat
         </div>
       </header>
 
-      {/* Barra de búsqueda */}
       <div className="relative max-w-2xl">
         <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
         <input 
@@ -131,7 +131,6 @@ const PhysioDashboard: React.FC<PhysioDashboardProps> = ({ patients, onSelectPat
               role="button"
               tabIndex={0}
             >
-              {/* Decoración de fondo */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700"></div>
               
               <div className="flex items-center gap-5 mb-8 relative z-10">
@@ -153,7 +152,20 @@ const PhysioDashboard: React.FC<PhysioDashboardProps> = ({ patients, onSelectPat
                     {p.patientType}
                   </span>
                 </div>
-                <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 group-hover:bg-blue-50/50 transition-colors">
+                
+                {/* Evolución rápida en tarjeta */}
+                <div className="grid grid-cols-1 gap-2 mt-4">
+                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wide">
+                    <CalendarDays size={14} className="text-blue-400" />
+                    <span>Ingreso: {new Date(p.admissionDate).toLocaleDateString('es-ES')}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
+                    <TrendingUp size={14} className="text-emerald-500" />
+                    <span className="text-emerald-600">Respuesta: {p.treatmentResponse || 'Pendiente evaluar'}</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 group-hover:bg-blue-50/50 transition-colors mt-2">
                   <p className="text-xs text-slate-600 italic leading-relaxed line-clamp-2">"{p.diagnosis || 'Sin diagnóstico detallado registrado.'}"</p>
                 </div>
               </div>
