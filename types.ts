@@ -1,4 +1,7 @@
 
+// Version constant for the application
+export const APP_VERSION = "v2.5.8 PRO";
+
 export type UserRole = 'patient' | 'physio';
 
 export interface PhysioUser {
@@ -54,15 +57,6 @@ export interface DiagnosticStudy {
   resultSummary: string;
 }
 
-export interface NewsArticle {
-  id: string;
-  title: string;
-  category: string;
-  imageUrl: string;
-  date: string;
-  readTime: string;
-}
-
 export interface Exercise {
   id: string;
   title: string;
@@ -92,7 +86,7 @@ export interface Appointment {
   type: 'Tratamiento' | 'Revisión' | 'Evaluación' | 'Domicilio';
 }
 
-export type ActivityLevel = 'Sedentario' | 'Leve' | 'Moderado' | 'Activo' | 'Muy Activo';
+export type ActivityLevel = 'Sedentario' | 'Leve' | 'Moderado' | 'Activo' | 'Deportista Competición' | 'Atleta Alto Rendimiento';
 
 export interface PatientInfo {
   id: string;
@@ -108,13 +102,14 @@ export interface PatientInfo {
   illnessHistory: string; 
   treatmentReceived: string;
   treatmentReason: string; 
-  warningSigns: string;    
-  medicalHistory: string;  
-  otherTreatments: string; 
+  warningSigns: string;    // Signos de Alarma / Red Flags
+  medicalHistory: string;  // Antecedentes Médicos
+  allergies: string;       // Alergias
+  otherTreatments: string; // Medicamentos actuales
   clinicalFindings: string;
   physicalActivityLevel: ActivityLevel;
   physicalExam: PhysicalExamination; 
-  drugInteractions: string; 
+  drugInteractions: string; // Alertas sobre medicamentos
   referralSource: string;
   patientType: 'Intrahospitalario' | 'Ambulatorio';
   ambulationType: string;
@@ -133,15 +128,18 @@ export interface Message {
   timestamp: Date;
 }
 
+export interface NewsArticle {
+  id: string;
+  title: string;
+  category: string;
+  imageUrl: string;
+  date: string;
+  readTime: string;
+}
+
 export interface JointAngles {
   shoulder: number;
   elbow: number;
   hip: number;
   knee: number;
-}
-
-export interface PREMResult {
-  date: string;
-  score: number;
-  comment: string;
 }

@@ -7,9 +7,10 @@ import { UserRole, PhysioUser, PatientInfo } from '../types';
 interface GlobalAssistantProps {
   role: UserRole;
   user?: PhysioUser | PatientInfo | null;
+  version?: string;
 }
 
-const GlobalAssistant: React.FC<GlobalAssistantProps> = ({ role, user }) => {
+const GlobalAssistant: React.FC<GlobalAssistantProps> = ({ role, user, version }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<{sender: 'user' | 'ai', text: string}[]>([]);
@@ -23,7 +24,6 @@ const GlobalAssistant: React.FC<GlobalAssistantProps> = ({ role, user }) => {
     }
   }, [messages, isOpen, isMinimized]);
 
-  // Welcome message based on role
   useEffect(() => {
     if (messages.length === 0 && isOpen) {
       const welcomeText = role === 'physio' 
@@ -52,24 +52,23 @@ const GlobalAssistant: React.FC<GlobalAssistantProps> = ({ role, user }) => {
     return (
       <button 
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-[100] w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 transition-all hover:rotate-12 active:scale-95 group"
+        className="fixed bottom-6 right-6 z-[100] w-16 h-16 bg-gradient-to-br from-emerald-500 to-green-700 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 transition-all hover:rotate-12 active:scale-95 group shadow-emerald-200"
       >
         <Sparkles className="w-8 h-8 group-hover:animate-pulse" />
-        <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[10px] font-bold">1</div>
       </button>
     );
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 z-[100] w-80 sm:w-96 bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col transition-all duration-300 overflow-hidden ${isMinimized ? 'h-16' : 'h-[500px]'}`}>
-      <header className={`p-4 flex items-center justify-between text-white ${role === 'physio' ? 'bg-emerald-600' : 'bg-blue-600'}`}>
+    <div className={`fixed bottom-6 right-6 z-[100] w-80 sm:w-96 bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(16,185,129,0.2)] border border-slate-100 flex flex-col transition-all duration-300 overflow-hidden ${isMinimized ? 'h-16' : 'h-[500px]'}`}>
+      <header className={`p-4 flex items-center justify-between text-white bg-emerald-600`}>
         <div className="flex items-center gap-3">
           <div className="p-2 bg-white/20 rounded-xl">
             <Sparkles size={18} />
           </div>
           <div>
             <h4 className="font-bold text-sm tracking-tight">Asistente {role === 'physio' ? 'Clínico' : 'IA'}</h4>
-            {!isMinimized && <p className="text-[9px] opacity-70 uppercase font-black tracking-widest">Sede Sevilla · Online</p>}
+            {!isMinimized && <p className="text-[9px] opacity-70 uppercase font-black tracking-widest">{version || 'v2.5.2'} · Sede Sevilla</p>}
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -99,7 +98,7 @@ const GlobalAssistant: React.FC<GlobalAssistantProps> = ({ role, user }) => {
             {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-white p-3 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm">
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
                 </div>
               </div>
             )}

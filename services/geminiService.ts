@@ -36,35 +36,32 @@ export const getClinicalAnalysis = async (findings: string, patient: PatientInfo
     const testsStr = patient.physicalExam.orthopedicTests.map(t => `${t.testName}: ${t.result}`).join(', ');
     
     const vitals = patient.vitalSigns;
-    const vitalsStr = `FC:${vitals.heartRate}lpm, FR:${vitals.respiratoryRate}rpm, TA:${vitals.bloodPressure}, SatO2:${vitals.oxygenSaturation}%, Temp:${vitals.temperature}ºC, Peso:${vitals.weight}kg, Talla:${vitals.height}cm, IMC:${vitals.bmi.toFixed(2)}`;
+    const vitalsStr = `FC:${vitals.heartRate}lpm, TA:${vitals.bloodPressure}, SatO2:${vitals.oxygenSaturation}%, Peso:${vitals.weight}kg, Talla:${vitals.height}cm, IMC:${vitals.bmi.toFixed(2)}`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Actúa como consultor senior en fisioterapia clínica.
-      PERFIL PACIENTE: 
-      - Edad: ${patient.age} años.
-      - Nivel Actividad: ${patient.physicalActivityLevel}.
-      - Signos Vitales: ${vitalsStr}
-      - Diagnóstico previo: ${patient.diagnosis}
-      - Historia: ${patient.illnessHistory}
-      
-      EXPLORACIÓN FÍSICA:
-      - Inspección Visual: ${patient.physicalExam.visualInspection}
-      - Palpación: ${patient.physicalExam.palpation}
-      - Goniometría: ${goniometryStr}
-      - Test Ortopédicos Realizados: ${testsStr}
-      - Nuevos hallazgos reportados hoy: ${findings}
+      contents: `Actúa como consultor senior en fisioterapia clínica avanzada (EBP).
+      PACIENTE: ${patient.name}, ${patient.age} años.
+      DIAGNÓSTICO MÉDICO: ${patient.diagnosis}
+      SIGNOS VITALES: ${vitalsStr}
+      HISTORIA CLÍNICA: ${patient.illnessHistory}
+      ANTECEDENTES Y ALERTAS: ${patient.medicalHistory}. Alergias: ${patient.allergies}. Medicación: ${patient.otherTreatments}.
+      EXPLORACIÓN FÍSICA: ${patient.physicalExam.visualInspection}. Goniometría: ${goniometryStr}. Tests: ${testsStr}.
+      NUEVOS HALLAZGOS REPORTADOS: ${findings}
       
       TAREA:
-      1. Proporciona un Razonamiento Clínico detallado conectando los signos vitales, el IMC y el nivel de actividad con la patología.
-      2. Sugiere Diagnósticos Diferenciales (EBP).
-      3. Propón un Plan de Tratamiento Avanzado (Fase actual, objetivos, terapia manual y progresión de carga).
-      Usa Markdown, negritas y sea técnico pero resolutivo.`,
-      config: { temperature: 0.4 },
+      1. Razonamiento Clínico: Conecta los síntomas con la biomecánica y los fármacos.
+      2. Diagnóstico Diferencial: Sugiere 3 posibilidades basadas en evidencia.
+      3. Plan Terapéutico EBP: Propón fases, terapia manual, ejercicio terapéutico y criterios de progresión.
+      Usa Markdown técnico y resolutivo.`,
+      config: { 
+        temperature: 0.3,
+        thinkingConfig: { thinkingBudget: 4000 }
+      },
     });
-    return response.text || "Error en el análisis del motor clínico.";
+    return response.text || "Error en el análisis clínico.";
   } catch (error) {
-    return "Error de comunicación con la IA clínica.";
+    return "Error de comunicación con el motor IA.";
   }
 };
 

@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Search, Save, Trash2, Edit3, CheckCircle2, User, Book, ArrowRight, X } from 'lucide-react';
+import { PlusCircle, Search, Save, Trash2, Edit3, CheckCircle2, User, Book, ArrowLeft, X, Activity } from 'lucide-react';
 import { Exercise, PatientInfo } from '../types';
 
 interface ExerciseManagerProps {
   patients: PatientInfo[];
   initialSelectedPatient: PatientInfo | null;
   onUpdatePlan: (patientId: string, exercises: Exercise[]) => void;
+  onBack?: () => void;
 }
 
-const ExerciseManager: React.FC<ExerciseManagerProps> = ({ patients, initialSelectedPatient, onUpdatePlan }) => {
+const ExerciseManager: React.FC<ExerciseManagerProps> = ({ patients, initialSelectedPatient, onUpdatePlan, onBack }) => {
   const [showCreator, setShowCreator] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>(initialSelectedPatient?.id || '');
   const [assignedExercises, setAssignedExercises] = useState<Exercise[]>([]);
@@ -53,10 +54,22 @@ const ExerciseManager: React.FC<ExerciseManagerProps> = ({ patients, initialSele
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-800">Biblioteca y Planes</h2>
-          <p className="text-slate-500">Configura el tratamiento personalizado para tus pacientes.</p>
+      {/* Nuevo Header con botón Volver */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/70 backdrop-blur-lg p-4 rounded-3xl border border-white/40 sticky top-0 z-30 shadow-lg">
+        <div className="flex items-center gap-4">
+          {onBack && (
+            <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-all font-bold text-[10px] uppercase tracking-wider group">
+              <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100 group-hover:bg-blue-50">
+                <ArrowLeft className="w-4 h-4" />
+              </div>
+              <span>Volver</span>
+            </button>
+          )}
+          <div className="h-8 w-px bg-slate-200"></div>
+          <div>
+            <h2 className="text-xl font-black text-slate-800 tracking-tight">Plan de Trabajo</h2>
+            <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest leading-none">Diseño de Terapia</p>
+          </div>
         </div>
         <button 
           onClick={() => setShowCreator(!showCreator)}
@@ -64,9 +77,16 @@ const ExerciseManager: React.FC<ExerciseManagerProps> = ({ patients, initialSele
             showCreator ? 'bg-slate-200 text-slate-600 shadow-slate-100' : 'bg-blue-600 text-white shadow-blue-100 hover:bg-blue-700'
           }`}
         >
-          {showCreator ? <><X className="w-5 h-5" /> Cancelar</> : <><PlusCircle className="w-5 h-5" /> Crear Nuevo Ejercicio</>}
+          {showCreator ? <><X className="w-5 h-5" /> Cancelar</> : <><PlusCircle className="w-5 h-5" /> Crear Ejercicio</>}
         </button>
-      </header>
+      </div>
+
+      <div className="grid grid-cols-1 md:flex md:flex-row md:items-center justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-3xl font-black text-slate-800">Biblioteca y Planes</h2>
+          <p className="text-slate-500 font-medium">Configura el tratamiento personalizado para tus pacientes.</p>
+        </div>
+      </div>
 
       {showCreator && (
         <div className="bg-white p-8 rounded-[2rem] border border-blue-100 shadow-xl animate-in slide-in-from-top duration-300">
@@ -215,34 +235,8 @@ const ExerciseManager: React.FC<ExerciseManagerProps> = ({ patients, initialSele
           </div>
         </section>
       </div>
-      
-      {/* Tip interactivo */}
-      {!selectedPatientId && patients.length > 0 && (
-        <div className="bg-blue-50 border border-blue-100 p-6 rounded-3xl flex items-center justify-between animate-bounce-slow">
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
-                <ArrowRight className="w-6 h-6" />
-             </div>
-             <div>
-                <p className="font-bold text-blue-900">Consejo de navegación</p>
-                <p className="text-sm text-blue-700">Puedes asignar planes rápidamente desde la ficha de cada paciente.</p>
-             </div>
-          </div>
-          <button 
-            onClick={() => setSelectedPatientId(patients[0].id)}
-            className="text-blue-600 font-black text-xs uppercase tracking-tighter"
-          >
-            Probar con {patients[0].name.split(' ')[0]}
-          </button>
-        </div>
-      )}
     </div>
   );
 };
-
-// Internal icon proxy
-const Activity: React.FC<any> = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-);
 
 export default ExerciseManager;
